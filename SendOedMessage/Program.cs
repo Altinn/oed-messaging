@@ -36,7 +36,7 @@ var messagingService = builder.GetRequiredService<IOedMessagingService>();
 /* 
 // Manual instantiation
 var channelManagerService = new ChannelManagerService(settings);
-var notificationService = new AltinnCorrespondenceService(channelManagerService, settings);
+var messagingService = new OedMessagingService(channelManagerService, settings);
 */
 
 var messageDetails = new OedMessageDetails
