@@ -1,0 +1,40 @@
+# Workflow creating a Github package
+name: Release Nuget
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+    - "v[0-9]+.[0-9]+.[0-9]+.*"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Setup build environment
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '6.0.x'
+    - name: Set VERSION variable from latest tag
+      run: |
+        LATEST_TAG=$(git fetch --tags && git for-each-ref --sort=creatordate --format '%(refname)' refs/tags | tail -n 1)
+        if [[ "${LATEST_TAG}" == "" ]]; then echo "Unable to determine latest tag! Exiting"; exit 1; fi
+        echo "LATEST_TAG: ${LATEST_TAG}"
+        VERSION=${LATEST_TAG/refs\/tags\/v/}
+        echo "VERSION: ${VERSION}"
+        echo "VERSION=${VERSION}" >> $GITHUB_ENV
+    - name: Set PROJECT variable to point to solution file
+      run: |
+        PROJECT=$(find . -name 'Altinn.ApiClients.Maskinporten.csproj' -printf "%p" -quit)
+        echo "PROJECT=${PROJECT}" >> $GITHUB_ENV
+    - name: Build
+      run: dotnet build --configuration Release /p:Version=${VERSION} ${PROJECT}
+    - name: Pack with debug symbols
+      run: dotnet pack --configuration Release /p:Version=${VERSION} -p:IncludeSymbols=true -p:SymbolPackageFormat=snupkg --output . ${PROJECT}
+    - name: Push to nuget.org
+      env:
+        NUGET_ORG_API_KEY: ${{secrets.NUGET_ORG_API_KEY}}
+      run: dotnet nuget push *.${VERSION}.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_ORG_API_KEY }}
