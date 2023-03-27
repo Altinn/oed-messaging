@@ -6,8 +6,18 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   
+  <PropertyGroup>
+    <PackageId>Altinn.Oed.Messaging</PackageId>
+    <Company>Digitaliseringsdirektoratet</Company>
+    <PackageTags>digdir;altinn;oed;digitalt dødsbo</PackageTags>
+    <Description>
+      Library wrapping Altinns correspondence used for messaging heirs
+    </Description>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/data-altinn-no/oed-messaging</RepositoryUrl>
+  </PropertyGroup>
+
   <ItemGroup>
-    <!-- WCF related things -->
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.1" />
     <PackageReference Include="System.Private.ServiceModel" Version="4.10.0" />
