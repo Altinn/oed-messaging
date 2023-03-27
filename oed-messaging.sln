@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.2.32630.192
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Altinn.Oed.Messaging", "Altinn.Oed.Messaging\Altinn.Oed.Messaging.csproj", "{AD5D0472-5887-4C96-A3D2-D1950BB41233}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SendOedMessage", "SendOedMessage\SendOedMessage.csproj", "{E276257A-E2D0-495C-BAED-FCB31A1CED59}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AD5D0472-5887-4C96-A3D2-D1950BB41233}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AD5D0472-5887-4C96-A3D2-D1950BB41233}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AD5D0472-5887-4C96-A3D2-D1950BB41233}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AD5D0472-5887-4C96-A3D2-D1950BB41233}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E276257A-E2D0-495C-BAED-FCB31A1CED59}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E276257A-E2D0-495C-BAED-FCB31A1CED59}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E276257A-E2D0-495C-BAED-FCB31A1CED59}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E276257A-E2D0-495C-BAED-FCB31A1CED59}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {ADA30B7D-70EC-42C6-9181-89351ABE5CE2}
+	EndGlobalSection
+EndGlobal

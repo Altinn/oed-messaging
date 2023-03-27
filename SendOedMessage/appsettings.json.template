@@ -1,0 +1,8 @@
+﻿{
+  "Settings": {
+    "AltinnServiceAddress": "https://tt02.altinn.no/",
+    "CorrespondenceSettings": "<servicecode>, <serviceeditioncode>, <systemcode>",
+    "AgencySystemUserName": "<username here>",
+    "AgencySystemPassword": "<password here>"
+  }
+}
