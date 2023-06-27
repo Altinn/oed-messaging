@@ -87,6 +87,7 @@ public class OedMessagingService : IOedMessagingService
             MessageSender = correspondence.Sender,
             VisibleDateTime = DateTime.Now,
             AllowForwarding = false,
+            IsReservable = false,
             Content = new ExternalContentV2
             {
                 LanguageCode = LanguageCode,
