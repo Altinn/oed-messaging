@@ -14,7 +14,7 @@ var configuration = new ConfigurationBuilder()
 
 IOedNotificationSettings settings = configuration.GetSection("Settings").Get<Settings>()!;
 
-// Use extension method for IHostBuilder
+// Use extension method for IHostBuilder for service registration 
 var host = Host.CreateDefaultBuilder(args)
         .AddOedMessaging(settings)
         //.ConfigureServices(serviceCollection => ...)
@@ -23,7 +23,7 @@ var host = Host.CreateDefaultBuilder(args)
 var messagingService = host.Services.GetRequiredService<IOedMessagingService>();
 
 /*
-// Dependency injection without IHostBuilder
+// Service registration without IHostBuilder
 var builder = new ServiceCollection()
     .AddSingleton(_ => settings)
     .AddSingleton<IChannelManagerService, ChannelManagerService>()
@@ -46,6 +46,7 @@ var messageDetails = new OedMessageDetails
     //Summary = "Dette er sammendraget som vises over streken i meldingen (men etter ekspandering).",
     Body = "Dette er en <strong>melding</strong>",
     Sender = "Digitalt Dødsbo",
+    VisibleDateTime = DateTime.Now.AddDays(7),
     Notification = new NotificationDetails
     {
         EmailBody = "Dette er body",
@@ -55,12 +56,6 @@ var messageDetails = new OedMessageDetails
 };
 
 var receipt = await messagingService.SendMessage(messageDetails);
-if (receipt is null)
-{
-    Console.Error.WriteLine("receipt is null");
-    return;
-}
-
 Console.WriteLine(JsonSerializer.Serialize(receipt, options: new JsonSerializerOptions
 {
     WriteIndented = true

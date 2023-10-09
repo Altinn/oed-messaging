@@ -31,6 +31,11 @@ public class OedMessageDetails
     public string? Sender { get; set; }
 
     /// <summary>
+    /// Gets or sets the visible date time for the message
+    /// </summary>
+    public DateTime? VisibleDateTime { get; set; }
+
+    /// <summary>
     /// Gets or sets the details needed to create notifications.
     /// </summary>
     public NotificationDetails Notification { get; set; } = new();

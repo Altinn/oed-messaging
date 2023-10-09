@@ -85,7 +85,7 @@ public class OedMessagingService : IOedMessagingService
             ServiceEdition = CorrespondenceServiceEdition,
             Reportee = correspondence.Recipient,
             MessageSender = correspondence.Sender,
-            VisibleDateTime = DateTime.Now,
+            VisibleDateTime = correspondence.VisibleDateTime ?? DateTime.Now,
             AllowForwarding = false,
             IsReservable = false,
             Content = new ExternalContentV2
