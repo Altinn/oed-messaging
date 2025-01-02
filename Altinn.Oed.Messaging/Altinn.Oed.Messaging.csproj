@@ -14,7 +14,7 @@
       Library wrapping Altinns correspondence used for messaging heirs
     </Description>
     <RepositoryType>git</RepositoryType>
-    <RepositoryUrl>https://github.com/data-altinn-no/oed-messaging</RepositoryUrl>
+    <RepositoryUrl>https://github.com/altinn/oed-messaging</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>

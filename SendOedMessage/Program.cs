@@ -1,7 +1,6 @@
 ﻿using System.Text.Json;
 using Altinn.Oed.Messaging.Models;
 using Altinn.Oed.Messaging.Models.Interfaces;
-using Altinn.Oed.Messaging.Services;
 using Altinn.Oed.Messaging.Services.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -52,7 +51,8 @@ var messageDetails = new OedMessageDetails
         EmailBody = "Dette er body",
         EmailSubject = "Dette er subject",
         SmsText = "Dette er SMS"
-    }
+    },
+    //AllowForwarding = true
 };
 
 var receipt = await messagingService.SendMessage(messageDetails);
