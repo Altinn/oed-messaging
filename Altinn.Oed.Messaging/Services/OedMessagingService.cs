@@ -102,13 +102,13 @@ public class OedMessagingService : IOedMessagingService
         if (correspondence.Notification.SmsText != null)
         {
             insertCorrespondence.Notifications.Add(
-                CreateNotification(TransportType.SMS, correspondence.Notification.SmsText, string.Empty));
+                CreateNotification(TransportType.SMS, correspondence.Notification.SmsText, string.Empty, correspondence.ShipmentDatetime));
         }
 
         if (correspondence.Notification.EmailSubject != null && correspondence.Notification.EmailBody != null)
         {
             insertCorrespondence.Notifications.Add(
-                CreateNotification(TransportType.Email, correspondence.Notification.EmailSubject, correspondence.Notification.EmailBody));
+                CreateNotification(TransportType.Email, correspondence.Notification.EmailSubject, correspondence.Notification.EmailBody, correspondence.ShipmentDatetime));
         }
 
         var result = await _channelManagerService.With<CorrespondenceAgencyExternalBasicClient>(async x =>
@@ -143,10 +143,11 @@ public class OedMessagingService : IOedMessagingService
         return reply;
     }
 
-    private static Notification1 CreateNotification(TransportType transportType, string subject, string body)
+    private static Notification1 CreateNotification(TransportType transportType, string subject, string body, DateTime? shipmentDatetime)
     {
         return new Notification1
         {
+            ShipmentDateTime = shipmentDatetime ?? DateTime.Now,
             FromAddress = FromAddress,
             LanguageCode = LanguageCode,
             NotificationType = NotificationType,
