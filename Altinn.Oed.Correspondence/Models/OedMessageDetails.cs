@@ -1,7 +1,8 @@
 namespace Altinn.Oed.Correspondence.Models;
 
 /// <summary>
-/// This class holds the details needed to create a new correspondence in Altinn.
+/// This class holds the details needed to create a new correspondence in Altinn 3.
+/// Compatible with the existing Altinn 2 interface for seamless migration.
 /// </summary>
 public class OedMessageDetails
 {

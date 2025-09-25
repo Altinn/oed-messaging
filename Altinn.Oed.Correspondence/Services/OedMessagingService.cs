@@ -9,7 +9,8 @@ namespace Altinn.Oed.Correspondence.Services;
 
 /// <summary>
 /// The <see cref="OedMessagingService"/> class is an implementation of the <see cref="IOedMessagingService"/> interface and represents
-/// a wrapper around a client of the Altinn 3 Correspondence service.
+/// a wrapper around the Altinn 3 Correspondence API client. This service maintains compatibility with the existing Altinn 2 interface
+/// while leveraging the modern Altinn 3 REST API for improved performance and reliability.
 /// </summary>
 public class OedMessagingService : IOedMessagingService
 {
@@ -86,21 +87,15 @@ public class OedMessagingService : IOedMessagingService
             var result = await _correspondenceClient.CorrespondencePOSTAsync(correspondenceRequest);
 
             // Convert Altinn 3 response to Altinn 2 compatible response
-            var reply = new ReceiptExternal
-            {
-                ReceiptStatusCode = ReceiptStatusEnum.OK,
-                ReceiptText = "Correspondence sent successfully"
-            };
-
-            return reply;
+            return ReceiptExternal.CreateSuccess();
         }
         catch (AltinnCorrespondenceException e)
         {
-            throw new MessagingServiceException($"Could not send correspondence to Altinn 3: {e.Message}");
+            throw new CorrespondenceServiceException($"Could not send correspondence to Altinn 3: {e.Message}");
         }
         catch (Exception e)
         {
-            throw new MessagingServiceException($"Could not send correspondence to Altinn 3: {e.Message}");
+            throw new CorrespondenceServiceException($"Could not send correspondence to Altinn 3: {e.Message}");
         }
     }
 

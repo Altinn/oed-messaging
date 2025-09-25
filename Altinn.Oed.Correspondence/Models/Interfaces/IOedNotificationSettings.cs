@@ -1,9 +1,17 @@
 namespace Altinn.Oed.Correspondence.Models.Interfaces;
+
+/// <summary>
+/// Settings interface for Altinn 3 Correspondence service configuration
+/// </summary>
 public interface IOedNotificationSettings
 {
-    public string AltinnServiceAddress { get; set; }
+    /// <summary>
+    /// Gets or sets the correspondence settings in format "resourceId,sender"
+    /// </summary>
     public string CorrespondenceSettings { get; set; }
-    public string AgencySystemUserName { get; set; }
-    public string AgencySystemPassword { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether to use Altinn test servers (TT02) instead of production
+    /// </summary>
     public bool UseAltinnTestServers { get; set; }
 }
