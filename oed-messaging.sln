@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SendOedMessage", "SendOedMe
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Altinn.Oed.Correspondence", "Altinn.Oed.Correspondence\Altinn.Oed.Correspondence.csproj", "{00000000-0000-0000-0000-000000000000}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Altinn.Oed.Correspondence.Tests", "Altinn.Oed.Correspondence.Tests\Altinn.Oed.Correspondence.Tests.csproj", "{E211CA9B-F2C0-4792-AE06-B3DFABEDDA27}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -25,6 +27,10 @@ Global
 		{E276257A-E2D0-495C-BAED-FCB31A1CED59}.Release|Any CPU.Build.0 = Release|Any CPU
 		{00000000-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{00000000-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E211CA9B-F2C0-4792-AE06-B3DFABEDDA27}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E211CA9B-F2C0-4792-AE06-B3DFABEDDA27}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E211CA9B-F2C0-4792-AE06-B3DFABEDDA27}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E211CA9B-F2C0-4792-AE06-B3DFABEDDA27}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
