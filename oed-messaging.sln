@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Altinn.Oed.Messaging", "Alt
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SendOedMessage", "SendOedMessage\SendOedMessage.csproj", "{E276257A-E2D0-495C-BAED-FCB31A1CED59}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Altinn.Oed.Correspondence", "Altinn.Oed.Correspondence\Altinn.Oed.Correspondence.csproj", "{F387257B-F3E1-406D-CBED-GDB42A2DFE70}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{E276257A-E2D0-495C-BAED-FCB31A1CED59}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E276257A-E2D0-495C-BAED-FCB31A1CED59}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E276257A-E2D0-495C-BAED-FCB31A1CED59}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F387257B-F3E1-406D-CBED-GDB42A2DFE70}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F387257B-F3E1-406D-CBED-GDB42A2DFE70}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F387257B-F3E1-406D-CBED-GDB42A2DFE70}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F387257B-F3E1-406D-CBED-GDB42A2DFE70}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
