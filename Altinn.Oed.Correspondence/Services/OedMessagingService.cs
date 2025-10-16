@@ -99,8 +99,18 @@ public class OedMessagingService : IOedMessagingService
         }
     }
 
-    private static InitializeCorrespondenceNotificationExt CreateNotification(NotificationDetails notificationDetails, DateTime? shipmentDatetime)
+    private static InitializeCorrespondenceNotificationExt? CreateNotification(NotificationDetails notificationDetails, DateTime? shipmentDatetime)
     {
+        // Check if any notification details are provided
+        bool hasEmailNotification = !string.IsNullOrEmpty(notificationDetails.EmailSubject) && !string.IsNullOrEmpty(notificationDetails.EmailBody);
+        bool hasSmsNotification = !string.IsNullOrEmpty(notificationDetails.SmsText);
+        
+        // If no notification details are provided, return null (no notification)
+        if (!hasEmailNotification && !hasSmsNotification)
+        {
+            return null;
+        }
+
         var notification = new InitializeCorrespondenceNotificationExt
         {
             NotificationTemplate = NotificationTemplateExt.CustomMessage,
@@ -108,7 +118,7 @@ public class OedMessagingService : IOedMessagingService
         };
 
         // Set email notification if provided
-        if (!string.IsNullOrEmpty(notificationDetails.EmailSubject) && !string.IsNullOrEmpty(notificationDetails.EmailBody))
+        if (hasEmailNotification)
         {
             notification.EmailSubject = notificationDetails.EmailSubject;
             notification.EmailBody = notificationDetails.EmailBody;
@@ -116,21 +126,21 @@ public class OedMessagingService : IOedMessagingService
         }
 
         // Set SMS notification if provided
-        if (!string.IsNullOrEmpty(notificationDetails.SmsText))
+        if (hasSmsNotification)
         {
             notification.SmsBody = notificationDetails.SmsText;
         }
 
         // Determine notification channel based on what's provided
-        if (!string.IsNullOrEmpty(notificationDetails.EmailSubject) && !string.IsNullOrEmpty(notificationDetails.SmsText))
+        if (hasEmailNotification && hasSmsNotification)
         {
             notification.NotificationChannel = NotificationChannelExt.EmailAndSms;
         }
-        else if (!string.IsNullOrEmpty(notificationDetails.EmailSubject))
+        else if (hasEmailNotification)
         {
             notification.NotificationChannel = NotificationChannelExt.Email;
         }
-        else if (!string.IsNullOrEmpty(notificationDetails.SmsText))
+        else if (hasSmsNotification)
         {
             notification.NotificationChannel = NotificationChannelExt.Sms;
         }

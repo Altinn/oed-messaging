@@ -1,137 +1,117 @@
 # Altinn.Oed.Correspondence
 
-This library provides a wrapper around the Altinn 3 Correspondence API for messaging heirs in the digital estate (OED) system. It maintains compatibility with the existing Altinn 2 messaging interface to ensure seamless migration.
+A .NET library for sending correspondence through Altinn 3 Correspondence API. Provides backward compatibility with Altinn 2 messaging interface.
 
 ## Features
 
-- **Altinn 3 API Integration**: Uses the modern Altinn 3 REST API instead of legacy WCF services
-- **Backward Compatibility**: Maintains the same public interface as the Altinn 2 version
-- **Modern HTTP Client**: Leverages .NET's HttpClient for improved performance and reliability
-- **Comprehensive Error Handling**: Proper exception mapping and error handling
-- **Flexible Configuration**: Supports both test and production Altinn environments
+- **Altinn 3 Integration**: Uses modern REST API instead of WCF services
+- **Backward Compatible**: Same interface as Altinn 2 version
+- **Flexible Authentication**: Works with any token provider implementation
+- **Minimal Dependencies**: Only essential .NET packages
 
-## Usage
+## Quick Start
 
-### Basic Setup
+### 1. Install Package
 
-```csharp
-using Altinn.Oed.Correspondence.Extensions;
-using Altinn.Oed.Correspondence.Models;
-
-var settings = new Settings
-{
-    CorrespondenceSettings = "your-resource-id,your-sender-org", // Altinn 3 format
-    UseAltinnTestServers = true // Use TT02 for testing
-};
-
-hostBuilder.AddOedCorrespondence(settings);
+```bash
+dotnet add package Altinn.Oed.Correspondence
 ```
 
-### Sending Correspondence
+### 2. Configure Settings
 
 ```csharp
-var messagingService = serviceProvider.GetService<IOedMessagingService>();
+var settings = new Settings
+{
+    CorrespondenceSettings = "your-resource-id,your-sender-org",
+    UseAltinnTestServers = true // Use TT02 for testing
+};
+```
+
+### 3. Implement Token Provider
+
+```csharp
+public class YourTokenProvider : IAccessTokenProvider
+{
+    public async Task<string> GetAccessTokenAsync()
+    {
+        // Return your OAuth2/JWT Bearer token
+        return "your-access-token";
+    }
+}
+```
+
+### 4. Register Services
+
+```csharp
+var tokenProvider = new YourTokenProvider();
+hostBuilder.AddOedCorrespondence(settings, tokenProvider);
+```
+
+### 5. Send Correspondence
+
+```csharp
+var messagingService = serviceProvider.GetRequiredService<IOedMessagingService>();
 
 var correspondence = new OedMessageDetails
 {
-    Recipient = "12345678901", // Organization number or SSN
+    Recipient = "12345678901",
     Title = "Important Notice",
-    Summary = "Summary of the correspondence",
-    Body = "Full body content of the correspondence",
-    Sender = "Your Organization Name",
-    VisibleDateTime = DateTime.Now,
-    Notification = new NotificationDetails
-    {
-        EmailSubject = "Email Subject",
-        EmailBody = "Email body content",
-        SmsText = "SMS text content"
-    }
+    Summary = "Brief summary",
+    Body = "Full message content",
+    Sender = "Your Organization",
+    VisibleDateTime = DateTime.Now
 };
 
 var result = await messagingService.SendMessage(correspondence);
 ```
 
+## Maskinporten Authentication
+
+For production use with Maskinporten, see the reference implementation in `SendOedCorrespondence` project using `Altinn.ApiClients.Maskinporten` v9.2.1.
+
 ## Migration from Altinn 2
 
 ### Configuration Changes
 
-**Altinn 2 Format:**
+**Before (Altinn 2):**
 ```csharp
 CorrespondenceSettings = "serviceCode,serviceEdition,userCode"
 AgencySystemUserName = "username"
 AgencySystemPassword = "password"
-AltinnServiceAddress = "https://service.altinn.no"
 ```
 
-**Altinn 3 Format:**
+**After (Altinn 3):**
 ```csharp
-CorrespondenceSettings = "resourceId,sender" // Simplified format
-UseAltinnTestServers = true // Boolean flag for environment
+CorrespondenceSettings = "resourceId,sender"
+// No username/password - use IAccessTokenProvider instead
 ```
 
 ### Key Differences
 
-1. **Authentication**: Altinn 3 uses modern OAuth2/JWT tokens instead of username/password
-2. **API Endpoints**: REST API instead of WCF services
-3. **Configuration**: Simplified configuration with fewer parameters
-4. **Error Handling**: Modern exception types with better error information
-
-### Exception Handling
-
-The service throws `CorrespondenceServiceException` instead of `MessagingServiceException`:
-
-```csharp
-try
-{
-    var result = await messagingService.SendMessage(correspondence);
-}
-catch (CorrespondenceServiceException ex)
-{
-    // Handle correspondence-specific errors
-    Console.WriteLine($"Correspondence failed: {ex.Message}");
-}
-```
+1. **Authentication**: OAuth2/JWT Bearer tokens instead of username/password
+2. **API**: REST instead of WCF services
+3. **Dependencies**: Must provide `IAccessTokenProvider` implementation
 
 ## API Reference
 
-### IOedMessagingService
+### Core Interfaces
 
-The main service interface for sending correspondences.
+- `IOedMessagingService`: Main service for sending correspondence
+- `IAccessTokenProvider`: Authentication token provider
 
-#### Methods
+### Key Models
 
-- `Task<ReceiptExternal> SendMessage(OedMessageDetails correspondence)`: Creates and sends a correspondence
-
-### Models
-
-#### OedMessageDetails
-Contains all information needed to create a correspondence:
-- `Recipient`: Organization number or SSN
-- `Title`: Correspondence title
-- `Summary`: Brief summary
-- `Body`: Full content
-- `Sender`: Sender organization name
-- `VisibleDateTime`: When to make visible
-- `Notification`: Notification settings
-
-#### NotificationDetails
-Controls how recipients are notified:
-- `EmailSubject`: Email subject line
-- `EmailBody`: Email content
-- `SmsText`: SMS content
-
-#### Settings
-Configuration for the service:
-- `CorrespondenceSettings`: Resource ID and sender (comma-separated)
-- `UseAltinnTestServers`: Use TT02 environment
+- `OedMessageDetails`: Complete correspondence information
+- `NotificationDetails`: Optional email/SMS notification settings
+- `Settings`: Service configuration
 
 ## Dependencies
 
-- .NET 6.0
+- .NET 6.0+
 - Microsoft.Extensions.Http
 - Microsoft.Extensions.DependencyInjection
 - Microsoft.Extensions.Hosting
 
 ## License
 
-This project is licensed under the same terms as the parent repository.
+Same as parent repository.

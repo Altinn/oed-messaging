@@ -1,4 +1,5 @@
 using System.Net.Http;
+using Altinn.Oed.Correspondence.Authentication;
 using Altinn.Oed.Correspondence.Extensions;
 using Altinn.Oed.Correspondence.Models;
 using Altinn.Oed.Correspondence.Models.Interfaces;
@@ -16,13 +17,25 @@ namespace Altinn.Oed.Correspondence.Tests.IntegrationTests;
 /// </summary>
 public class OedMessagingServiceIntegrationTests
 {
+    /// <summary>
+    /// Mock token provider for testing that returns a fake token.
+    /// </summary>
+    private class MockTokenProvider : IAccessTokenProvider
+    {
+        public Task<string> GetAccessTokenAsync()
+        {
+            return Task.FromResult("mock-token-for-testing");
+        }
+    }
+
     [Fact]
     public void AddOedCorrespondence_RegistersServicesCorrectly()
     {
         // Arrange
         var settings = SettingsBuilder.Create().WithValidDefaults().Build();
+        var tokenProvider = new MockTokenProvider();
         var hostBuilder = Host.CreateDefaultBuilder()
-            .AddOedCorrespondence(settings);
+            .AddOedCorrespondence(settings, tokenProvider);
 
         // Act
         var host = hostBuilder.Build();
@@ -48,10 +61,11 @@ public class OedMessagingServiceIntegrationTests
             .WithCorrespondenceSettings("test-resource,test-sender")
             .WithUseAltinnTestServers(true)
             .Build();
+        var tokenProvider = new MockTokenProvider();
 
         // Act
         var host = Host.CreateDefaultBuilder()
-            .AddOedCorrespondence(settings)
+            .AddOedCorrespondence(settings, tokenProvider)
             .Build();
 
         var service = host.Services.GetRequiredService<IOedMessagingService>();
@@ -71,10 +85,11 @@ public class OedMessagingServiceIntegrationTests
             .WithCorrespondenceSettings("prod-resource,prod-sender")
             .WithUseAltinnTestServers(false)
             .Build();
+        var tokenProvider = new MockTokenProvider();
 
         // Act
         var host = Host.CreateDefaultBuilder()
-            .AddOedCorrespondence(settings)
+            .AddOedCorrespondence(settings, tokenProvider)
             .Build();
 
         var service = host.Services.GetRequiredService<IOedMessagingService>();
@@ -91,8 +106,9 @@ public class OedMessagingServiceIntegrationTests
     {
         // Arrange
         var settings = SettingsBuilder.Create().WithValidDefaults().Build();
+        var tokenProvider = new MockTokenProvider();
         var host = Host.CreateDefaultBuilder()
-            .AddOedCorrespondence(settings)
+            .AddOedCorrespondence(settings, tokenProvider)
             .Build();
 
         var service = host.Services.GetRequiredService<IOedMessagingService>();
@@ -112,8 +128,9 @@ public class OedMessagingServiceIntegrationTests
     {
         // Arrange
         var settings = SettingsBuilder.Create().WithValidDefaults().Build();
+        var tokenProvider = new MockTokenProvider();
         var host = Host.CreateDefaultBuilder()
-            .AddOedCorrespondence(settings)
+            .AddOedCorrespondence(settings, tokenProvider)
             .Build();
 
         // Act
@@ -129,8 +146,9 @@ public class OedMessagingServiceIntegrationTests
     {
         // Arrange
         var settings = SettingsBuilder.Create().WithValidDefaults().Build();
+        var tokenProvider = new MockTokenProvider();
         var host = Host.CreateDefaultBuilder()
-            .AddOedCorrespondence(settings)
+            .AddOedCorrespondence(settings, tokenProvider)
             .Build();
 
         // Act

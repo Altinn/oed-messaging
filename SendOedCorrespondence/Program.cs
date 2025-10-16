@@ -1,38 +1,62 @@
 ﻿using System.Text.Json;
+using Altinn.ApiClients.Maskinporten.Services;
+using Altinn.ApiClients.Maskinporten.Interfaces;
+using Altinn.Oed.Correspondence.Authentication;
 using Altinn.Oed.Correspondence.Models;
 using Altinn.Oed.Correspondence.Models.Interfaces;
+using Altinn.Oed.Correspondence.Services;
 using Altinn.Oed.Correspondence.Services.Interfaces;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
-using Altinn.Oed.Correspondence.Extensions;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using SendOedCorrespondence.Authentication;
 
 var configuration = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json")
+    .AddUserSecrets<Program>()
     .Build();
 
-IOedNotificationSettings settings = configuration.GetSection("Settings").Get<Settings>()!;
+// Load settings
+var settings = configuration.GetSection("Settings").Get<Settings>()!;
+var maskinportenSettings = configuration.GetSection("MaskinportenSettings");
 
-// Use extension method for IHostBuilder for service registration 
+// Configure and build host with all services
 var host = Host.CreateDefaultBuilder(args)
-        .AddOedCorrespondence(settings)
-        .Build();
+    .ConfigureServices(services =>
+    {
+        // Register Maskinporten services
+        services.AddHttpClient<IMaskinportenService, MaskinportenService>();
+        services.AddMemoryCache();
+        services.AddSingleton<ITokenCacheProvider, MemoryTokenCacheProvider>();
+
+        // Create token provider adapter
+        services.AddSingleton<IAccessTokenProvider>(sp =>
+        {
+            var maskinportenService = sp.GetRequiredService<IMaskinportenService>();
+            var logger = sp.GetRequiredService<ILogger<MaskinportenTokenAdapter>>();
+            return new MaskinportenTokenAdapter(maskinportenService, maskinportenSettings, logger);
+        });
+
+        // Register correspondence services
+        services.AddSingleton<IOedNotificationSettings>(settings);
+        services.AddTransient<BearerTokenHandler>();
+        services.AddHttpClient<IOedMessagingService, OedMessagingService>()
+            .AddHttpMessageHandler<BearerTokenHandler>();
+    })
+    .Build();
 
 var messagingService = host.Services.GetRequiredService<IOedMessagingService>();
 
 var messageDetails = new OedMessageDetails
 {
     Recipient = "983175155", // Test recipient
-    Title = "Dette er melding fra Digitalt Dødsbo (Altinn 3)",
-    Body = "Dette er en <strong>melding</strong> fra Altinn 3 Correspondence API",
-    Sender = "Digitalt Dødsbo",
-    VisibleDateTime = DateTime.Now.AddDays(7),
-    Notification = new NotificationDetails
-    {
-        EmailBody = "Dette er email body fra Altinn 3",
-        EmailSubject = "Dette er email subject fra Altinn 3",
-        SmsText = "Dette er SMS fra Altinn 3"
-    }
+    Title = "Test", // Minimal plain text
+    Summary = "Test summary", // Minimal text
+    Body = "Test body", // Minimal text
+    Sender = "Test Sender",
+    VisibleDateTime = DateTime.Now.AddDays(7)
+    // No notification at all for now to test basic correspondence
 };
 
 try
