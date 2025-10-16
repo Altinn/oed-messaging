@@ -80,7 +80,7 @@ public class OedMessagingService : IOedMessagingService
                     AllowSystemDeleteAfter = correspondence.VisibleDateTime?.AddYears(1) ?? DateTimeOffset.Now.AddYears(1),
                     Notification = CreateNotification(correspondence.Notification, correspondence.ShipmentDatetime)
                 },
-                Recipients = new List<string> { FormatRecipient(correspondence.Recipient ?? string.Empty) } //not sure about this one, found it in their v1 api json file, lets leave it here and focus on the 4009: Resource type is not supported issue
+                Recipients = new List<string> { FormatRecipient(correspondence.Recipient ?? string.Empty) } //not sure about this one, found it in their v1 api json file, lets leave it here and focus on the 4009: Resource type is not supported. Resource must be of type GenericAccessResource or CorrespondenceService
             };
 
             // Send the correspondence using Altinn 3 API

@@ -17,25 +17,20 @@ var configuration = new ConfigurationBuilder()
     .AddUserSecrets<Program>()
     .Build();
 
-// Load settings
 var settings = configuration.GetSection("Settings").Get<Settings>()!;
-var maskinportenSettings = configuration.GetSection("MaskinportenSettings");
 
-// Configure and build host with all services
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices(services =>
     {
-        // Register Maskinporten services
         services.AddHttpClient<IMaskinportenService, MaskinportenService>();
         services.AddMemoryCache();
         services.AddSingleton<ITokenCacheProvider, MemoryTokenCacheProvider>();
-
-        // Create token provider adapter
+        
         services.AddSingleton<IAccessTokenProvider>(sp =>
         {
             var maskinportenService = sp.GetRequiredService<IMaskinportenService>();
             var logger = sp.GetRequiredService<ILogger<MaskinportenTokenAdapter>>();
-            return new MaskinportenTokenAdapter(maskinportenService, maskinportenSettings, logger);
+            return new MaskinportenTokenAdapter(maskinportenService, configuration.GetSection("MaskinportenSettings"), logger);
         });
 
         // Register correspondence services
@@ -56,7 +51,7 @@ var messageDetails = new OedMessageDetails
     Body = "Test body", // Minimal text
     Sender = "Test Sender",
     VisibleDateTime = DateTime.Now.AddDays(7)
-    // No notification at all for now to test basic correspondence
+    // Super duper basic, no notification at all for now to test basic correspondence
 };
 
 try
