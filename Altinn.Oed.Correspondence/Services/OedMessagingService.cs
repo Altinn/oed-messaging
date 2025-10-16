@@ -80,7 +80,7 @@ public class OedMessagingService : IOedMessagingService
                     AllowSystemDeleteAfter = correspondence.VisibleDateTime?.AddYears(1) ?? DateTimeOffset.Now.AddYears(1),
                     Notification = CreateNotification(correspondence.Notification, correspondence.ShipmentDatetime)
                 },
-                Recipients = new List<string> { correspondence.Recipient ?? string.Empty }
+                Recipients = new List<string> { FormatRecipient(correspondence.Recipient ?? string.Empty) } //not sure about this one, found it in their v1 api json file, lets leave it here and focus on the 4009: Resource type is not supported issue
             };
 
             // Send the correspondence using Altinn 3 API
@@ -146,5 +146,37 @@ public class OedMessagingService : IOedMessagingService
         }
 
         return notification;
+    }
+
+    /// <summary>
+    /// Formats a recipient identifier into the proper URN format required by Altinn 3.
+    /// </summary>
+    /// <param name="recipient">The recipient identifier (organization number or SSN)</param>
+    /// <returns>The formatted URN string</returns>
+    private static string FormatRecipient(string recipient)
+    {
+        if (string.IsNullOrEmpty(recipient))
+        {
+            return string.Empty;
+        }
+
+        // Check if it's already in URN format
+        if (recipient.StartsWith("urn:altinn:", StringComparison.OrdinalIgnoreCase))
+        {
+            return recipient;
+        }
+
+        // Assume it's an organization number (9 digits) or SSN (11 digits)
+        if (recipient.Length == 9)
+        {
+            return $"urn:altinn:organization:identifier-no:{recipient}";
+        }
+        else if (recipient.Length == 11)
+        {
+            return $"urn:altinn:person:identifier-no:{recipient}";
+        }
+
+        // If we can't determine the format, return as-is (might cause validation error)
+        return recipient;
     }
 }
