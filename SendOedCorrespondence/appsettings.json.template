@@ -29,7 +29,7 @@
  *    - altinn:correspondence.write
  * 
  * 2. GET JWK FROM AZURE KEY VAULT (SECRETS)
- *    They are called (test env):
+ *    They are called (test env - digdir-tt02-apps-kv (KeyVault name)):
  *    - OedConfig--MaskinportenSettings--ClientId
  *    - OedConfig--MaskinportenSettings--EncodedJwk
  * 

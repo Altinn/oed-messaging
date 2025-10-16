@@ -4,6 +4,7 @@ using Altinn.Oed.Correspondence.Services;
 using Altinn.Oed.Correspondence.Services.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Http;
 
 namespace Altinn.Oed.Correspondence.Extensions;
 
@@ -33,6 +34,13 @@ public static class HostBuilderExtensions
             serviceCollection
                 .AddHttpClient<IOedMessagingService, OedMessagingService>()
                 .AddHttpMessageHandler<BearerTokenHandler>();
+            
+            serviceCollection.AddSingleton<IOedMessagingService>(sp =>
+            {
+                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient(nameof(IOedMessagingService));
+                return new OedMessagingService(httpClient, settings);
+            });
             
             // Register settings
             serviceCollection.AddSingleton(_ => settings);
