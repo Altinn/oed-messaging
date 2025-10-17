@@ -4,7 +4,6 @@ using Altinn.Oed.Correspondence.ExternalServices.Correspondence;
 using Altinn.Oed.Correspondence.Models;
 using Altinn.Oed.Correspondence.Models.Interfaces;
 using Altinn.Oed.Correspondence.Services.Interfaces;
-using Microsoft.Extensions.Logging;
 
 namespace Altinn.Oed.Correspondence.Services;
 
@@ -33,12 +32,10 @@ public class OedMessagingService : IOedMessagingService
     private static int Rand => _rand.Next(100000, 999999);
 
     private readonly AltinnCorrespondenceClient _correspondenceClient;
-    private readonly ILogger<OedMessagingService> _logger;
 
-    public OedMessagingService(HttpClient httpClient, IOedNotificationSettings settings, ILogger<OedMessagingService> logger)
+    public OedMessagingService(HttpClient httpClient, IOedNotificationSettings settings)
     {
         _correspondenceClient = new AltinnCorrespondenceClient(httpClient);
-        _logger = logger;
 
         var correspondenceSettings = settings.CorrespondenceSettings.Split(',');
         var resourceId = correspondenceSettings[0].Trim();
