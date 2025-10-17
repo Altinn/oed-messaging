@@ -45,13 +45,14 @@ var messagingService = host.Services.GetRequiredService<IOedMessagingService>();
 
 var messageDetails = new OedMessageDetails
 {
-    Recipient = "983175155", // Test recipient
-    Title = "Test", // Minimal plain text
-    Summary = "Test summary", // Minimal text
-    Body = "Test body", // Minimal text
+    Recipient = "983175155",
+    Title = "Test Correspondence",
+    Summary = "# Test Summary\nThis is a test summary in **markdown** format.",
+    Body = "# Test Body\nThis is the main body content in **markdown** format.\n\n- Item 1\n- Item 2",
     Sender = "Test Sender",
-    VisibleDateTime = DateTime.Now.AddDays(7)
-    // Super duper basic, no notification at all for now to test basic correspondence
+    VisibleDateTime = DateTime.Now.AddDays(1),
+    ShipmentDatetime = DateTime.Now.AddDays(1),
+    AllowForwarding = false
 };
 
 try

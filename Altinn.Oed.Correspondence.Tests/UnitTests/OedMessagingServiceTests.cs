@@ -7,6 +7,7 @@ using Altinn.Oed.Correspondence.Models.Interfaces;
 using Altinn.Oed.Correspondence.Services;
 using Altinn.Oed.Correspondence.Tests.Builders;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
 using Xunit;
@@ -21,6 +22,7 @@ public class OedMessagingServiceTests
     private readonly Mock<HttpMessageHandler> _mockHttpMessageHandler;
     private readonly HttpClient _httpClient;
     private readonly IOedNotificationSettings _settings;
+    private readonly Mock<ILogger<OedMessagingService>> _mockLogger;
     private readonly OedMessagingService _service;
 
     public OedMessagingServiceTests()
@@ -28,7 +30,8 @@ public class OedMessagingServiceTests
         _mockHttpMessageHandler = new Mock<HttpMessageHandler>();
         _httpClient = new HttpClient(_mockHttpMessageHandler.Object);
         _settings = SettingsBuilder.Create().WithValidDefaults().Build();
-        _service = new OedMessagingService(_httpClient, _settings);
+        _mockLogger = new Mock<ILogger<OedMessagingService>>();
+        _service = new OedMessagingService(_httpClient, _settings, _mockLogger.Object);
     }
 
     [Fact]
@@ -41,7 +44,7 @@ public class OedMessagingServiceTests
             .Build();
 
         // Act
-        var service = new OedMessagingService(_httpClient, settings);
+        var service = new OedMessagingService(_httpClient, settings, _mockLogger.Object);
 
         // Assert
         service.ResourceId.Should().Be("test-resource");
@@ -56,7 +59,7 @@ public class OedMessagingServiceTests
             .WithCorrespondenceSettings("test-resource,test-sender")
             .WithUseAltinnTestServers(true)
             .Build();
-        var service = new OedMessagingService(_httpClient, settings);
+        var service = new OedMessagingService(_httpClient, settings, _mockLogger.Object);
 
         // Act & Assert
         // The base URL is set internally in the AltinnCorrespondenceClient
@@ -73,7 +76,7 @@ public class OedMessagingServiceTests
             .WithCorrespondenceSettings("prod-resource,prod-sender")
             .WithUseAltinnTestServers(false)
             .Build();
-        var service = new OedMessagingService(_httpClient, settings);
+        var service = new OedMessagingService(_httpClient, settings, _mockLogger.Object);
 
         // Act & Assert
         service.Should().NotBeNull();

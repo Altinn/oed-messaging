@@ -4,6 +4,7 @@ using Altinn.Oed.Correspondence.ExternalServices.Correspondence;
 using Altinn.Oed.Correspondence.Models;
 using Altinn.Oed.Correspondence.Models.Interfaces;
 using Altinn.Oed.Correspondence.Services.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace Altinn.Oed.Correspondence.Services;
 
@@ -32,10 +33,12 @@ public class OedMessagingService : IOedMessagingService
     private static int Rand => _rand.Next(100000, 999999);
 
     private readonly AltinnCorrespondenceClient _correspondenceClient;
+    private readonly ILogger<OedMessagingService> _logger;
 
-    public OedMessagingService(HttpClient httpClient, IOedNotificationSettings settings)
+    public OedMessagingService(HttpClient httpClient, IOedNotificationSettings settings, ILogger<OedMessagingService> logger)
     {
         _correspondenceClient = new AltinnCorrespondenceClient(httpClient);
+        _logger = logger;
 
         var correspondenceSettings = settings.CorrespondenceSettings.Split(',');
         var resourceId = correspondenceSettings[0].Trim();
@@ -78,9 +81,11 @@ public class OedMessagingService : IOedMessagingService
                     },
                     RequestedPublishTime = correspondence.VisibleDateTime ?? DateTimeOffset.Now,
                     AllowSystemDeleteAfter = correspondence.VisibleDateTime?.AddYears(1) ?? DateTimeOffset.Now.AddYears(1),
+                    PropertyList = new Dictionary<string, string>(),
                     Notification = CreateNotification(correspondence.Notification, correspondence.ShipmentDatetime)
                 },
-                Recipients = new List<string> { FormatRecipient(correspondence.Recipient ?? string.Empty) } //not sure about this one, found it in their v1 api json file, lets leave it here and focus on the 4009: Resource type is not supported. Resource must be of type GenericAccessResource or CorrespondenceService
+                Recipients = new List<string> { FormatRecipient(correspondence.Recipient ?? string.Empty) },
+                ExistingAttachments = new List<Guid>()
             };
 
             // Send the correspondence using Altinn 3 API
@@ -149,10 +154,11 @@ public class OedMessagingService : IOedMessagingService
     }
 
     /// <summary>
-    /// Formats a recipient identifier into the proper URN format required by Altinn 3.
+    /// Formats a recipient identifier into the proper format required by Altinn 3.
+    /// Supports organization numbers in both URN and country code formats.
     /// </summary>
-    /// <param name="recipient">The recipient identifier (organization number or SSN)</param>
-    /// <returns>The formatted URN string</returns>
+    /// <param name="recipient">The recipient identifier (organization number)</param>
+    /// <returns>The formatted recipient string</returns>
     private static string FormatRecipient(string recipient)
     {
         if (string.IsNullOrEmpty(recipient))
@@ -166,14 +172,16 @@ public class OedMessagingService : IOedMessagingService
             return recipient;
         }
 
-        // Assume it's an organization number (9 digits) or SSN (11 digits)
-        if (recipient.Length == 9)
+        // Check if it's already in countrycode:organizationnumber format
+        if (recipient.Contains(":"))
         {
-            return $"urn:altinn:organization:identifier-no:{recipient}";
+            return recipient;
         }
-        else if (recipient.Length == 11)
+
+        // For Norwegian organization numbers (9 digits), use country code format
+        if (recipient.Length == 9 && recipient.All(char.IsDigit))
         {
-            return $"urn:altinn:person:identifier-no:{recipient}";
+            return $"0192:{recipient}"; // 0192 is Norway's country code
         }
 
         // If we can't determine the format, return as-is (might cause validation error)

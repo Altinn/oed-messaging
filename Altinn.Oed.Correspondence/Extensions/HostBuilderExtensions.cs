@@ -5,6 +5,7 @@ using Altinn.Oed.Correspondence.Services.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http;
+using Microsoft.Extensions.Logging;
 
 namespace Altinn.Oed.Correspondence.Extensions;
 
@@ -39,7 +40,8 @@ public static class HostBuilderExtensions
             {
                 var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
                 var httpClient = httpClientFactory.CreateClient(nameof(IOedMessagingService));
-                return new OedMessagingService(httpClient, settings);
+                var logger = sp.GetRequiredService<ILogger<OedMessagingService>>();
+                return new OedMessagingService(httpClient, settings, logger);
             });
             
             // Register settings
