@@ -4,6 +4,8 @@ using Altinn.Oed.Correspondence.ExternalServices.Correspondence;
 using Altinn.Oed.Correspondence.Models;
 using Altinn.Oed.Correspondence.Models.Interfaces;
 using Altinn.Oed.Correspondence.Services.Interfaces;
+using Microsoft.Extensions.Logging;
+using System.ComponentModel.DataAnnotations;
 
 namespace Altinn.Oed.Correspondence.Services;
 
@@ -16,6 +18,7 @@ public class OedMessagingService : IOedMessagingService
 {
     private const string LanguageCode = "nb"; // Norwegian Bokmål for Altinn 3
     private const string NotificationTemplate = "CustomMessage";
+    private const string SenderReferencePrefix = "EXT_OED_SHIP_";
 
     /// <summary>
     /// Gets or sets the resource ID for the correspondence service.
@@ -27,22 +30,46 @@ public class OedMessagingService : IOedMessagingService
     /// </summary>
     public string Sender { get; set; }
 
-    private static Random _rand = new Random();
+    /// <summary>
+    /// Gets or sets the country code for organization number formatting.
+    /// </summary>
+    public string CountryCode { get; set; }
 
-    private static int Rand => _rand.Next(100000, 999999);
+    private static int Rand => Random.Shared.Next(100000, 999999);
 
     private readonly AltinnCorrespondenceClient _correspondenceClient;
+    private readonly ILogger<OedMessagingService> _logger;
 
-    public OedMessagingService(HttpClient httpClient, IOedNotificationSettings settings)
+    public OedMessagingService(HttpClient httpClient, IOedNotificationSettings settings, ILogger<OedMessagingService> logger)
     {
+        ArgumentNullException.ThrowIfNull(httpClient);
+        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(logger);
+        
+        // Validate settings using data annotations
+        var validationContext = new ValidationContext(settings);
+        var validationResults = new List<ValidationResult>();
+        if (!Validator.TryValidateObject(settings, validationContext, validationResults, true))
+        {
+            var errorMessages = string.Join("; ", validationResults.Select(r => r.ErrorMessage));
+            throw new ArgumentException($"Settings validation failed: {errorMessages}", nameof(settings));
+        }
+        
         _correspondenceClient = new AltinnCorrespondenceClient(httpClient);
+        _logger = logger;
 
         var correspondenceSettings = settings.CorrespondenceSettings.Split(',');
+        if (correspondenceSettings.Length < 2)
+        {
+            throw new ArgumentException("CorrespondenceSettings must contain resourceId and sender separated by comma", nameof(settings));
+        }
+        
         var resourceId = correspondenceSettings[0].Trim();
         var sender = correspondenceSettings[1].Trim();
 
         ResourceId = resourceId;
         Sender = sender;
+        CountryCode = settings.CountryCode;
 
         // Set base URL based on test server setting
         if (settings.UseAltinnTestServers)
@@ -58,6 +85,9 @@ public class OedMessagingService : IOedMessagingService
     /// <inheritdoc />        
     public async Task<ReceiptExternal> SendMessage(OedMessageDetails correspondence)
     {
+        _logger.LogInformation("Starting to send correspondence to recipient {Recipient} with title {Title}", 
+            correspondence.Recipient, correspondence.Title);
+            
         try
         {
             // Create the correspondence request for Altinn 3
@@ -66,7 +96,7 @@ public class OedMessagingService : IOedMessagingService
                 Correspondence = new BaseCorrespondenceExt
                 {
                     ResourceId = ResourceId,
-                    SendersReference = $"EXT_OED_SHIP_{Rand}",
+                    SendersReference = $"{SenderReferencePrefix}{Rand}",
                     MessageSender = correspondence.Sender,
                     Content = new InitializeCorrespondenceContentExt
                     {
@@ -88,21 +118,33 @@ public class OedMessagingService : IOedMessagingService
             // Send the correspondence using Altinn 3 API
             var result = await _correspondenceClient.CorrespondencePOSTAsync(correspondenceRequest);
 
+            _logger.LogInformation("Successfully sent correspondence to recipient {Recipient}", correspondence.Recipient);
+            
             // Convert Altinn 3 response to Altinn 2 compatible response
             return ReceiptExternal.CreateSuccess();
         }
         catch (AltinnCorrespondenceException e)
         {
-            throw new CorrespondenceServiceException($"Could not send correspondence to Altinn 3: {e.Message}");
+            _logger.LogError(e, "Failed to send correspondence to Altinn 3 for recipient {Recipient}: {ErrorMessage}", 
+                correspondence.Recipient, e.Message);
+            throw new CorrespondenceServiceException($"Could not send correspondence to Altinn 3: {e.Message}", e);
         }
         catch (Exception e)
         {
-            throw new CorrespondenceServiceException($"Could not send correspondence to Altinn 3: {e.Message}");
+            _logger.LogError(e, "Unexpected error while sending correspondence to recipient {Recipient}: {ErrorMessage}", 
+                correspondence.Recipient, e.Message);
+            throw new CorrespondenceServiceException($"Could not send correspondence to Altinn 3: {e.Message}", e);
         }
     }
 
-    private static InitializeCorrespondenceNotificationExt? CreateNotification(NotificationDetails notificationDetails, DateTime? shipmentDatetime)
+    private static InitializeCorrespondenceNotificationExt? CreateNotification(NotificationDetails? notificationDetails, DateTime? shipmentDatetime)
     {
+        // If no notification details are provided, return null (no notification)
+        if (notificationDetails == null)
+        {
+            return null;
+        }
+        
         // Check if any notification details are provided
         bool hasEmailNotification = !string.IsNullOrEmpty(notificationDetails.EmailSubject) && !string.IsNullOrEmpty(notificationDetails.EmailBody);
         bool hasSmsNotification = !string.IsNullOrEmpty(notificationDetails.SmsText);
@@ -156,7 +198,7 @@ public class OedMessagingService : IOedMessagingService
     /// </summary>
     /// <param name="recipient">The recipient identifier (organization number)</param>
     /// <returns>The formatted recipient string</returns>
-    private static string FormatRecipient(string recipient)
+    private string FormatRecipient(string recipient)
     {
         if (string.IsNullOrEmpty(recipient))
         {
@@ -178,7 +220,7 @@ public class OedMessagingService : IOedMessagingService
         // For Norwegian organization numbers (9 digits), use country code format
         if (recipient.Length == 9 && recipient.All(char.IsDigit))
         {
-            return $"0192:{recipient}"; // 0192 is Norway's country code
+            return $"{CountryCode}:{recipient}";
         }
 
         // If we can't determine the format, return as-is (might cause validation error)

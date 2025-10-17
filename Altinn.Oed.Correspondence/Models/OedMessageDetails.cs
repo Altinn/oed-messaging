@@ -44,7 +44,7 @@ public class OedMessageDetails
     /// <summary>
     /// Gets or sets the details needed to create notifications.
     /// </summary>
-    public NotificationDetails Notification { get; set; } = new();
+    public NotificationDetails? Notification { get; set; } = new();
 
     /// <summary>
     /// Gets or sets the allow forwarding flag (default is false)

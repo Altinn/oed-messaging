@@ -14,4 +14,9 @@ public interface IOedNotificationSettings
     /// Gets or sets whether to use Altinn test servers (TT02) instead of production
     /// </summary>
     public bool UseAltinnTestServers { get; set; }
+
+    /// <summary>
+    /// Gets or sets the country code for organization number formatting (default: "0192" for Norway)
+    /// </summary>
+    public string CountryCode { get; set; }
 }
