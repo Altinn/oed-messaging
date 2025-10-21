@@ -45,13 +45,19 @@ var messagingService = host.Services.GetRequiredService<IOedMessagingService>();
 
 var messageDetails = new OedMessageDetails
 {
-    Recipient = "983175155",
+    Recipient = "19838299493",
     Title = "Test Correspondence",
     Summary = "# Test Summary\nThis is a test summary in **markdown** format.",
     Body = "# Test Body\nThis is the main body content in **markdown** format.\n\n- Item 1\n- Item 2",
     Sender = "Test Sender",
-    VisibleDateTime = DateTime.Now.AddDays(1),
-    ShipmentDatetime = DateTime.Now.AddDays(1),
+    VisibleDateTime = null,
+    ShipmentDatetime = null,
+    Notification = new NotificationDetails
+    {
+        EmailSubject = "Test: ny melding i Altinn",
+        EmailBody = "Hei. Du har mottatt en ny melding i Altinn. Logg inn for å lese den.",
+        SmsText = "Du har en ny melding i Altinn. Logg inn for å lese."
+    },
     AllowForwarding = false
 };
 
