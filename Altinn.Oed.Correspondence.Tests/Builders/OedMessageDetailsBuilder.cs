@@ -73,6 +73,12 @@ public class OedMessageDetailsBuilder
         return this;
     }
 
+    public OedMessageDetailsBuilder WithIdempotencyKey(Guid idempotencyKey)
+    {
+        _messageDetails.IdempotencyKey = idempotencyKey;
+        return this;
+    }
+
     public OedMessageDetails Build() => _messageDetails;
 
     // Convenience methods for common test scenarios

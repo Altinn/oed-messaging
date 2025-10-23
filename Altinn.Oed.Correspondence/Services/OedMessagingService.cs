@@ -90,6 +90,12 @@ public class OedMessagingService : IOedMessagingService
             
         try
         {
+            // Generate idempotency key if not provided
+            var idempotencyKey = correspondence.IdempotencyKey ?? Guid.NewGuid();
+            
+            _logger.LogDebug("Using idempotency key {IdempotencyKey} for correspondence to recipient {Recipient}", 
+                idempotencyKey, correspondence.Recipient);
+
             // Create the correspondence request for Altinn 3
             var correspondenceRequest = new InitializeCorrespondencesExt
             {
@@ -112,7 +118,8 @@ public class OedMessagingService : IOedMessagingService
                     Notification = CreateNotification(correspondence.Notification, correspondence.ShipmentDatetime)
                 },
                 Recipients = new List<string> { FormatRecipient(correspondence.Recipient ?? string.Empty) },
-                ExistingAttachments = new List<Guid>()
+                ExistingAttachments = new List<Guid>(),
+                IdempotentKey = idempotencyKey
             };
 
             // Send the correspondence using Altinn 3 API

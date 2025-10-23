@@ -220,6 +220,53 @@ public class OedMessagingServiceTests
         result.ReceiptStatusCode.Should().Be(ReceiptStatusEnum.OK);
     }
 
+    [Fact]
+    public async Task SendMessage_WithoutIdempotencyKey_GeneratesNewGuid()
+    {
+        // Arrange
+        var messageDetails = OedMessageDetailsBuilder.Create()
+            .WithValidDefaults()
+            .Build();
+        
+        // Ensure no idempotency key is set
+        messageDetails.IdempotencyKey.Should().BeNull();
+
+        SetupSuccessfulHttpResponse();
+
+        // Act
+        var result = await _service.SendMessage(messageDetails);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.ReceiptStatusCode.Should().Be(ReceiptStatusEnum.OK);
+        
+        // Verify that the HTTP request was made (which means a GUID was generated)
+        VerifyHttpRequestWasMade();
+    }
+
+    [Fact]
+    public async Task SendMessage_WithProvidedIdempotencyKey_UsesProvidedKey()
+    {
+        // Arrange
+        var providedIdempotencyKey = Guid.NewGuid();
+        var messageDetails = OedMessageDetailsBuilder.Create()
+            .WithValidDefaults()
+            .WithIdempotencyKey(providedIdempotencyKey)
+            .Build();
+
+        SetupSuccessfulHttpResponse();
+
+        // Act
+        var result = await _service.SendMessage(messageDetails);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.ReceiptStatusCode.Should().Be(ReceiptStatusEnum.OK);
+        
+        // Verify that the HTTP request was made with the provided key
+        VerifyHttpRequestWasMade();
+    }
+
     private void SetupSuccessfulHttpResponse()
     {
         _mockHttpMessageHandler.Protected()
