@@ -1,5 +1,7 @@
 # Workflow for building and publishing Altinn.Oed.Correspondence NuGet package
 name: Release Correspondence Package
+permissions:
+  contents: read
 
 on:
   workflow_dispatch:
