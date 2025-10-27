@@ -1,0 +1,95 @@
+{
+  "Settings": {
+    "CorrespondenceSettings": "oed-correspondence,digdir",
+    "UseAltinnTestServers": true
+  },
+  "MaskinportenSettings": {
+    "ClientId": "YOUR_CLIENT_ID_HERE",
+    "Scope": "altinn:serviceowner altinn:correspondence.write",
+    "Authority": "https://test.maskinporten.no/",
+    "TokenEndpoint": "https://test.maskinporten.no/token",
+    "JwkBase64Encoded": "YOUR_BASE64_ENCODED_JWK_HERE",
+    "ExhangeToAltinnToken": false,
+    "OverwriteAuthorizationHeader": true,
+    "EnableDebugLogging": true
+  }
+}
+
+/*
+ * SETUP INSTRUCTIONS - Using Altinn.ApiClients.Maskinporten
+ * ==========================================================
+ * 
+ * This template uses Altinn's official Maskinporten helper library instead of 
+ * custom JWT implementation. Much simpler and more reliable!
+ * 
+ * 1. REQUEST SCOPES FROM ALTINN or create those if you have Maskinporten user and access
+ *    Email: servicedesk@altinn.no
+ *    Request access to these scopes:
+ *    - altinn:serviceowner
+ *    - altinn:correspondence.write
+ * 
+ * 2. GET JWK FROM AZURE KEY VAULT (SECRETS)
+ *    They are called (test env - digdir-tt02-apps-kv (KeyVault name)):
+ *    - OedConfig--MaskinportenSettings--ClientId
+ *    - OedConfig--MaskinportenSettings--EncodedJwk
+ * 
+ * 3. CONFIGURE THIS FILE
+ *    a) Replace "YOUR_CLIENT_ID_HERE" with the client_id from step 4
+ *    b) Replace "YOUR_BASE64_ENCODED_JWK_HERE" with the base64 JWK from step 3
+ *    c) For production, change Authority and TokenEndpoint to:
+ *       - Authority: "https://maskinporten.no/"
+ *       - TokenEndpoint: "https://maskinporten.no/token"
+ *       - UseAltinnTestServers: false
+ * 
+ * 6. USE USER SECRETS FOR DEVELOPMENT
+ *    Instead of putting real credentials in this file, use user secrets:
+ *    
+ *    dotnet user-secrets set "MaskinportenSettings:ClientId" "your-client-id"
+ *    dotnet user-secrets set "MaskinportenSettings:JwkBase64Encoded" "your-base64-jwk"
+ *    
+ *    This way you can keep this file with placeholder values.
+ * 
+ * 7. RENAME THIS FILE
+ *    Rename this template to appsettings.json:
+ *    mv appsettings.json.template appsettings.json
+ * 
+ * CONFIGURATION REFERENCE
+ * =======================
+ * 
+ * Settings:
+ *   CorrespondenceSettings: "resourceId,senderOrg"
+ *     - resourceId: Your Altinn resource ID (created in Altinn Studio)
+ *     - senderOrg: Your organization identifier
+ *   
+ *   UseAltinnTestServers: true|false
+ *     - true: Use TT02 test environment (platform.tt02.altinn.no)
+ *     - false: Use production environment (platform.altinn.no)
+ * 
+ * MaskinportenSettings:
+ *   ClientId: Your Maskinporten client ID from Samarbeidsportalen
+ *   
+ *   Scope: Space-separated list of required scopes
+ *     - Must match what was registered in Samarbeidsportalen
+ *   
+ *   Authority: Maskinporten issuer URL
+ *     - Test: https://test.maskinporten.no/
+ *     - Prod: https://maskinporten.no/
+ *   
+ *   TokenEndpoint: Maskinporten token URL
+ *     - Test: https://test.maskinporten.no/token
+ *     - Prod: https://maskinporten.no/token
+ *   
+ *   JwkBase64Encoded: Base64 encoded JSON Web Key from Azure Key Vault
+ *     - Contains RSA private key components
+ *     - Used for JWT signing
+ *   
+ *   ExhangeToAltinnToken: false
+ *     - Set to true if you want to exchange Maskinporten token for Altinn token
+ *     - For correspondence API, direct Maskinporten tokens work fine
+ *   
+ *   OverwriteAuthorizationHeader: true
+ *     - Ensures Authorization header is properly set
+ *   
+ *   EnableDebugLogging: true
+ *     - Enable for development to see token requests
+ *     - Disable in production for security
