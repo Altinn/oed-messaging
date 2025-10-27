@@ -38,8 +38,8 @@ jobs:
         
     - name: Set PROJECT variable to Correspondence project
       run: |
-        PROJECT=$(find . -name 'Altinn.Oed.Correspondence.csproj' -printf "%p" -quit)
-        if [[ "${PROJECT}" == "" ]]; then echo "Altinn.Oed.Correspondence.csproj not found! Exiting"; exit 1; fi
+        PROJECT=$(find . -name 'Altinn.Dd.Correspondence.csproj' -printf "%p" -quit)
+        if [[ "${PROJECT}" == "" ]]; then echo "Altinn.Dd.Correspondence.csproj not found! Exiting"; exit 1; fi
         echo "PROJECT: ${PROJECT}"
         echo "PROJECT=${PROJECT}" >> $GITHUB_ENV
         
@@ -50,7 +50,7 @@ jobs:
       run: dotnet build --configuration Release --no-restore /p:Version=${VERSION} ${PROJECT}
       
     - name: Run tests
-      run: dotnet test Altinn.Oed.Correspondence.Tests/Altinn.Oed.Correspondence.Tests.csproj --configuration Release --no-build --verbosity normal
+      run: dotnet test Altinn.Dd.Correspondence.Tests/Altinn.Dd.Correspondence.Tests.csproj --configuration Release --no-build --verbosity normal
       
     - name: Pack with debug symbols
       run: dotnet pack --configuration Release --no-build /p:Version=${VERSION} -p:IncludeSymbols=true -p:SymbolPackageFormat=snupkg --output . ${PROJECT}

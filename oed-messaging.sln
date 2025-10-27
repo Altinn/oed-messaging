@@ -7,11 +7,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Altinn.Oed.Messaging", "Alt
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SendOedMessage", "SendOedMessage\SendOedMessage.csproj", "{E276257A-E2D0-495C-BAED-FCB31A1CED59}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Altinn.Oed.Correspondence", "Altinn.Oed.Correspondence\Altinn.Oed.Correspondence.csproj", "{00000000-0000-0000-0000-000000000000}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Altinn.Dd.Correspondence", "Altinn.Dd.Correspondence\Altinn.Dd.Correspondence.csproj", "{00000000-0000-0000-0000-000000000000}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Altinn.Oed.Correspondence.Tests", "Altinn.Oed.Correspondence.Tests\Altinn.Oed.Correspondence.Tests.csproj", "{E211CA9B-F2C0-4792-AE06-B3DFABEDDA27}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Altinn.Dd.Correspondence.Tests", "Altinn.Dd.Correspondence.Tests\Altinn.Dd.Correspondence.Tests.csproj", "{E211CA9B-F2C0-4792-AE06-B3DFABEDDA27}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SendOedCorrespondence", "SendOedCorrespondence\SendOedCorrespondence.csproj", "{38C7E544-81A5-4F27-A877-BAF8AEBA8C62}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SendDdCorrespondence", "SendDdCorrespondence\SendDdCorrespondence.csproj", "{38C7E544-81A5-4F27-A877-BAF8AEBA8C62}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
