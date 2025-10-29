@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
   push:
     tags:
-    - "correspondence-v[0-9]+.[0-9]+.[0-9]+.*"
+    - "correspondence-v*"
 
 jobs:
   build:
@@ -44,10 +44,15 @@ jobs:
         echo "PROJECT=${PROJECT}" >> $GITHUB_ENV
         
     - name: Restore dependencies
-      run: dotnet restore ${PROJECT}
+      run: |
+        dotnet restore ${PROJECT}
+        dotnet restore Altinn.Dd.Correspondence.Tests/Altinn.Dd.Correspondence.Tests.csproj
       
     - name: Build
       run: dotnet build --configuration Release --no-restore /p:Version=${VERSION} ${PROJECT}
+      
+    - name: Build test project
+      run: dotnet build Altinn.Dd.Correspondence.Tests/Altinn.Dd.Correspondence.Tests.csproj --configuration Release --no-restore
       
     - name: Run tests
       run: dotnet test Altinn.Dd.Correspondence.Tests/Altinn.Dd.Correspondence.Tests.csproj --configuration Release --no-build --verbosity normal
