@@ -1,14 +1,17 @@
 # Altinn.Dd.Correspondence
 
-A .NET library for sending correspondence through Altinn 3 Correspondence API. Provides backward compatibility with Altinn 2 messaging interface.
+A .NET library for sending correspondence through Altinn 3 Correspondence API. This library follows Altinn 3 patterns for HttpClient registration with Maskinporten authentication.
 
 ## Quick Start
 
-### 1. Install Package
+### 1. Install Packages
 
 ```bash
 dotnet add package Altinn.Dd.Correspondence
+dotnet add package Altinn.ApiClients.Maskinporten
 ```
+
+**Note**: `Altinn.ApiClients.Maskinporten` is a peer dependency and must be installed separately.
 
 ### 2. Configure Settings
 
@@ -16,241 +19,173 @@ Add to your `appsettings.json`:
 
 ```json
 {
-  "AltinnMessagingSettings": {
-    "CorrespondenceSettings": "your-resource-id,your-sender-org",
-    "UseAltinnTestServers": true,
-    "CountryCode": "0192"
-  },
   "DdConfig": {
     "MaskinportenSettings": {
       "ClientId": "your-client-id",
-      "Scope": "altinn:serviceowner/correspondence",
-      "WellKnownEndpoint": "https://maskinporten.no/.well-known/oauth-authorization-server"
+      "Environment": "test",
+      "EncodedJwk": "your-base64-encoded-jwk"
+    },
+    "CorrespondenceSettings": {
+      "CorrespondenceSettings": "your-resource-id,your-sender-org",
+      "UseAltinnTestServers": true,
+      "CountryCode": "0192"
     }
   }
 }
 ```
 
-### 3. Implement Token Provider
+**Configuration Details**:
+- `ClientId`: Your Maskinporten client ID (required)
+- `Environment`: Either "test" or "prod" for Maskinporten environment
+- `EncodedJwk`: Base64-encoded JWK from Azure Key Vault
+- `CorrespondenceSettings`: Format is "resourceId,senderOrg"
+- `UseAltinnTestServers`: Set to `true` for TT02 test environment, `false` for production
+- `CountryCode`: Country code for organization numbers (default: "0192" for Norway)
 
-**Important**: You must implement the `IAccessTokenProvider` interface to provide authentication tokens to the Altinn Correspondence API. This interface is not provided by the library - you need to create your own implementation.
+**Note**: The scope `"altinn:serviceowner altinn:correspondence.write"` is hardcoded in the library - you don't need to specify it.
 
-The `IAccessTokenProvider` interface has one method:
-```csharp
-public interface IAccessTokenProvider
-{
-    Task<string> GetAccessTokenAsync();
-}
-```
+### 3. Register Service
 
-#### Complete Maskinporten Implementation Example
-
-Here's a complete, working implementation using `Altinn.ApiClients.Maskinporten`:
+In your `Program.cs` or `Startup.cs`:
 
 ```csharp
-using Altinn.Dd.Correspondence.Authentication;
-using Altinn.ApiClients.Maskinporten.Services;
-using Altinn.ApiClients.Maskinporten.Interfaces;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-
-public class MaskinportenTokenAdapter : IAccessTokenProvider
-{
-    private readonly IMaskinportenService _maskinportenService;
-    private readonly IConfiguration _config;
-    private readonly ILogger<MaskinportenTokenAdapter> _logger;
-
-    public MaskinportenTokenAdapter(
-        IMaskinportenService maskinportenService, 
-        IConfiguration config, 
-        ILogger<MaskinportenTokenAdapter> logger)
-    {
-        _maskinportenService = maskinportenService;
-        _config = config;
-        _logger = logger;
-    }
-
-    public async Task<string> GetAccessTokenAsync()
-    {
-        try
-        {
-            var maskinportenSettings = _config.GetSection("DdConfig:MaskinportenSettings");
-            var clientId = maskinportenSettings["ClientId"];
-            var scope = maskinportenSettings["Scope"];
-            
-            _logger.LogDebug("Requesting Maskinporten token for client {ClientId} with scope {Scope}", 
-                clientId, scope);
-            
-            var token = await _maskinportenService.GetTokenAsync(clientId, scope);
-            
-            _logger.LogDebug("Successfully retrieved Maskinporten token");
-            return token.AccessToken;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to retrieve Maskinporten token");
-            throw;
-        }
-    }
-}
-```
-
-**Note**: For a complete working example, see the `SendDdCorrespondence` project in this repository, which includes the full `MaskinportenTokenAdapter` implementation.
-
-### 4. Register Services
-
-The `AddDdCorrespondence()` extension method handles all the complex service registration for you, including HttpClient, authentication handlers, and retry policies. You only need to register your `IAccessTokenProvider` implementation.
-
-In your `Program.cs`:
-
-```csharp
+using Altinn.ApiClients.Maskinporten.Config;
 using Altinn.Dd.Correspondence.Extensions;
-using Altinn.Dd.Correspondence.Models;
-using Altinn.Dd.Correspondence.Models.Interfaces;
-using Altinn.Dd.Correspondence.Services.Interfaces;
-using Altinn.Dd.Correspondence.Authentication;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
-var builder = WebApplication.CreateBuilder(args);
-
-// Step 1: Get settings from configuration
-var settings = builder.Configuration.GetSection("AltinnMessagingSettings").Get<Settings>()!;
-
-// Step 2: Register your token provider implementation
-builder.Services.AddSingleton<IAccessTokenProvider>(sp =>
-{
-    var maskinportenService = sp.GetRequiredService<IMaskinportenService>();
-    var logger = sp.GetRequiredService<ILogger<MaskinportenTokenAdapter>>();
-    return new MaskinportenTokenAdapter(maskinportenService, builder.Configuration, logger);
-});
-
-// Step 3: Register correspondence services (handles HttpClient, BearerTokenHandler, Polly retry policies)
-builder.Host.AddDdCorrespondence(settings, builder.Services.BuildServiceProvider().GetRequiredService<IAccessTokenProvider>());
-
-var app = builder.Build();
+// In ConfigureServices or builder.Services
+services.AddDdMessagingService<SettingsJwkClientDefinition>(
+    configuration.GetSection("DdConfig:MaskinportenSettings"),
+    configuration.GetSection("DdConfig:CorrespondenceSettings"),
+    clientDefinition =>
+    {
+        // Optional: configure additional settings
+        clientDefinition.ClientSettings.EnableDebugLogging = true;
+    });
 ```
 
-**What `AddDdCorrespondence()` does for you:**
-- Registers `HttpClient` with proper configuration
-- Adds `BearerTokenHandler` for automatic token injection
-- Configures Polly retry policies (3 retries with exponential backoff)
-- Registers `IDdMessagingService` as a singleton
-- Sets up proper dependency injection for all correspondence services
+### 4. Use the Service
 
-**You don't need to manually register:**
-- `HttpClient` or `IHttpClientFactory`
-- `BearerTokenHandler`
-- Polly retry policies
-- `IDdMessagingService`
-
-### 5. Send Correspondence
+Inject `IDdMessagingService` into your classes:
 
 ```csharp
-using Altinn.Dd.Correspondence.Models;
-using Altinn.Dd.Correspondence.Services.Interfaces;
-using Altinn.Dd.Correspondence.ExternalServices.Correspondence;
-
-// Inject the service
-var messagingService = app.Services.GetRequiredService<IDdMessagingService>();
-
-// Create message
-var message = new DdMessageDetails
+public class MyService
 {
-    Recipient = "12345678901", // SSN or org number
-    Title = "Important Notice",
-    Summary = "Brief summary",
-    Body = "Full message content",
-    Sender = "Your Organization",
-    VisibleDateTime = DateTime.UtcNow,
-    ShipmentDatetime = DateTime.UtcNow.AddMinutes(1),
-    AllowForwarding = false,
-    Notification = new NotificationDetails
+    private readonly IDdMessagingService _messagingService;
+
+    public MyService(IDdMessagingService messagingService)
     {
-        SmsText = "SMS notification text",
-        EmailSubject = "Email subject",
-        EmailBody = "Email body content"
+        _messagingService = messagingService;
     }
-};
 
-// Send message
-var receipt = await messagingService.SendMessage(message);
+    public async Task SendCorrespondenceAsync()
+    {
+        var messageDetails = new DdMessageDetails
+        {
+            Recipient = "123456789", // Organization number
+            Title = "Important Notice",
+            Summary = "A brief summary",
+            Body = "The full message body",
+            Sender = "Your Organization",
+            Notification = new NotificationDetails
+            {
+                EmailSubject = "New message in Altinn",
+                EmailBody = "You have received a new message.",
+                SmsText = "New message in Altinn. Log in to read."
+            }
+        };
 
-// Check result
-if (receipt.ReceiptStatusCode == ReceiptStatusEnum.OK)
-{
-    Console.WriteLine($"Success: {receipt.ReceiptText}");
-}
-else
-{
-    Console.WriteLine($"Error: {receipt.ReceiptText}");
+        var receipt = await _messagingService.SendMessage(messageDetails);
+    }
 }
 ```
 
-## Architecture Overview
+## Features
 
-The `Altinn.Dd.Correspondence` library provides a clean abstraction over the Altinn 3 Correspondence API while maintaining compatibility with Altinn 2 interfaces. Here's how the components work together:
+**What the library does for you:**
+- Automatic Maskinporten authentication via `Altinn.ApiClients.Maskinporten`
+- Hardcoded scope for correspondence API (no need to configure)
+- Automatic organization number formatting
+- Comprehensive logging and error handling
+- Idempotency support to prevent duplicate messages
 
-```mermaid
-graph TB
-    subgraph "Your Application"
-        App[Your Application Code]
-        TokenProvider[Your IAccessTokenProvider Implementation]
-    end
-    
-    subgraph "Altinn.Dd.Correspondence Library"
-        Service[IDdMessagingService]
-        Handler[BearerTokenHandler]
-        HttpClient[HttpClient with Polly Retry]
-    end
-    
-    subgraph "Altinn 3 API"
-        API[Altinn Correspondence API]
-    end
-    
-    App -->|"SendMessage()"| Service
-    Service -->|"GetAccessTokenAsync()"| TokenProvider
-    Service -->|"HTTP Request"| Handler
-    Handler -->|"Add Bearer Token"| HttpClient
-    HttpClient -->|"Retry on Failure"| API
-    API -->|"Response"| HttpClient
-    HttpClient -->|"Response"| Handler
-    Handler -->|"Response"| Service
-    Service -->|"ReceiptExternal"| App
-    
-    style TokenProvider fill:#e1f5fe
-    style Service fill:#f3e5f5
-    style Handler fill:#fff3e0
-    style HttpClient fill:#e8f5e8
-    style API fill:#ffebee
+## Complete Example
+
+See the `SendDdCorrespondence` project in this repository for a complete working example.
+
+## API Reference
+
+### DdMessageDetails
+
+```csharp
+public class DdMessageDetails
+{
+    public string? Recipient { get; set; }          // Organization number (9 digits)
+    public string? Title { get; set; }              // Message title
+    public string? Summary { get; set; }            // Brief summary (supports markdown)
+    public string? Body { get; set; }               // Full message body (supports markdown)
+    public string? Sender { get; set; }             // Sender name
+    public DateTime? VisibleDateTime { get; set; }  // When message becomes visible
+    public DateTime? ShipmentDatetime { get; set; } // When to send notifications
+    public bool AllowForwarding { get; set; }       // Allow recipient to forward
+    public Guid? IdempotencyKey { get; set; }       // Optional: auto-generated if null
+    public NotificationDetails? Notification { get; set; } // Email/SMS notifications
+}
 ```
 
-### Key Components
+### NotificationDetails
 
-**IDdMessagingService**: The main service interface that your application uses to send correspondence. Maintains compatibility with Altinn 2 interfaces.
+```csharp
+public class NotificationDetails
+{
+    public string? EmailSubject { get; set; }  // Email notification subject
+    public string? EmailBody { get; set; }     // Email notification body
+    public string? SmsText { get; set; }       // SMS notification text
+}
+```
 
-**IAccessTokenProvider**: Interface that you must implement to provide authentication tokens. The library calls `GetAccessTokenAsync()` before each API request.
+## Error Handling
 
-**BearerTokenHandler**: Automatically adds the Bearer token from your `IAccessTokenProvider` to outgoing HTTP requests.
+```csharp
+try
+{
+    var receipt = await messagingService.SendMessage(messageDetails);
+}
+catch (CorrespondenceServiceException ex)
+{
+    // Handle API errors
+    _logger.LogError(ex, "Failed to send correspondence");
+}
+```
 
-**HttpClient with Polly**: Handles HTTP communication with automatic retry policies (3 retries with exponential backoff) for transient failures.
+Retry logic with exponential backoff (3 retries) is built into the service and handles transient failures automatically.
 
-**Idempotency Key**: Automatically generates unique GUIDs for each correspondence request to prevent duplicates during retries.
+## Migration from Old Pattern
 
-### Service Registration Flow
+If you're migrating from the old `AddDdCorrespondence` pattern with `IAccessTokenProvider`:
 
-When you call `AddDdCorrespondence()`, the library:
+**Before:**
+```csharp
+builder.Host.AddDdCorrespondence(settings, accessTokenProvider);
+```
 
-1. **Registers HttpClient**: Creates a configured `HttpClient` instance
-2. **Adds Authentication**: Registers `BearerTokenHandler` to inject tokens automatically
-3. **Configures Retry Policy**: Sets up Polly with exponential backoff for resilience
-4. **Registers Services**: Makes `IDdMessagingService` available for dependency injection
-5. **Validates Settings**: Ensures your configuration is valid using data annotations
+**After:**
+```csharp
+services.AddDdMessagingService<SettingsJwkClientDefinition>(
+    configuration.GetSection("DdConfig:MaskinportenSettings"),
+    configuration.GetSection("DdConfig:CorrespondenceSettings"),
+    clientDefinition =>
+    {
+        clientDefinition.ClientSettings.EnableDebugLogging = true;
+    });
+```
 
-### Error Handling
-
-The library provides comprehensive error handling:
-
-- **Network Failures**: Automatically retried with exponential backoff
-- **Authentication Errors**: Wrapped in `CorrespondenceServiceException` with clear messages
+The new pattern:
+- Eliminates the need for custom `IAccessTokenProvider` implementations
+- Uses the standard Altinn 3 Maskinporten HttpClient pattern
+- Simplifies configuration (only ClientId is required from appsettings)
+- Hardcodes the scope internally (one less thing to configure)
 - **Validation Errors**: Settings are validated using data annotations
 - **API Errors**: Altinn 3 API errors are preserved and wrapped for consistency
 
@@ -586,7 +521,7 @@ var problemDetailsActual = (Microsoft.AspNetCore.Mvc.ProblemDetails)objectActual
 
 ### Key Models
 
-- `DdMessageDetails`: Complete correspondence information
+- `DdMessageDetails`: Complete correspondence information (includes optional `IdempotencyKey` property)
 - `NotificationDetails`: Optional email/SMS notification settings
 - `Settings`: Service configuration
 - `ReceiptExternal`: Response from correspondence service

@@ -1,75 +1,53 @@
-using Altinn.Dd.Correspondence.Authentication;
+using Altinn.ApiClients.Maskinporten.Extensions;
+using Altinn.ApiClients.Maskinporten.Interfaces;
+using Altinn.Dd.Correspondence.Models;
 using Altinn.Dd.Correspondence.Models.Interfaces;
-using Altinn.Dd.Correspondence.Services;
 using Altinn.Dd.Correspondence.Services.Interfaces;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Http;
-using Microsoft.Extensions.Logging;
-using Polly;
-using Polly.Extensions.Http;
 
 namespace Altinn.Dd.Correspondence.Extensions;
 
-public static class HostBuilderExtensions
+public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Creates a retry policy for HTTP requests to handle transient failures
+    /// Adds DD Messaging Service with Maskinporten authentication to the service collection.
+    /// This method follows the Altinn 3 pattern for registering HttpClients with Maskinporten.
     /// </summary>
-    /// <returns>A retry policy</returns>
-    private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+    /// <typeparam name="TClientDefinition">The Maskinporten client definition type (e.g., SettingsJwkClientDefinition)</typeparam>
+    /// <param name="services">The service collection</param>
+    /// <param name="maskinportenSettings">Configuration section containing Maskinporten settings (must include ClientId)</param>
+    /// <param name="correspondenceSettings">Configuration section containing correspondence settings</param>
+    /// <param name="configureClient">Optional action to configure the Maskinporten client (e.g., set EnableDebugLogging)</param>
+    /// <returns>The service collection for chaining</returns>
+    public static IServiceCollection AddDdMessagingService<TClientDefinition>(
+        this IServiceCollection services,
+        IConfigurationSection maskinportenSettings,
+        IConfigurationSection correspondenceSettings,
+        Action<dynamic>? configureClient = null)
+        where TClientDefinition : class, IClientDefinition
     {
-        return HttpPolicyExtensions
-            .HandleTransientHttpError()
-            .OrResult(msg => !msg.IsSuccessStatusCode)
-            .WaitAndRetryAsync(
-                retryCount: 3,
-                sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)), // Exponential backoff
-                onRetry: (outcome, timespan, retryCount, context) =>
-                {
-                    // Log retry attempts (this will be handled by the logger in the service)
-                });
-    }
-
-    /// <summary>
-    /// Adds DD Correspondence services to the host builder.
-    /// </summary>
-    /// <param name="hostBuilder">The host builder to configure</param>
-    /// <param name="settings">The correspondence settings</param>
-    /// <param name="accessTokenProvider">The token provider for authentication</param>
-    /// <returns>The configured host builder</returns>
-    public static IHostBuilder AddDdCorrespondence(
-        this IHostBuilder hostBuilder, 
-        IDdNotificationSettings settings,
-        IAccessTokenProvider accessTokenProvider)
-    {
-        hostBuilder.ConfigureServices(serviceCollection =>
+        // Bind and register correspondence settings
+        var settings = correspondenceSettings.Get<Settings>();
+        if (settings == null)
         {
-            // Register the token provider
-            serviceCollection.AddSingleton(accessTokenProvider);
-            
-            // Register the authentication handler
-            serviceCollection.AddTransient<BearerTokenHandler>();
-            
-            // Register HttpClient with authentication handler and retry policy
-            serviceCollection
-                .AddHttpClient<IDdMessagingService, DdMessagingService>()
-                .AddHttpMessageHandler<BearerTokenHandler>()
-                .AddPolicyHandler(GetRetryPolicy());
-            
-            // Override the registration to make it singleton
-            serviceCollection.AddSingleton<IDdMessagingService>(sp =>
+            throw new ArgumentException("Correspondence settings are required", nameof(correspondenceSettings));
+        }
+        
+        services.AddSingleton<IDdNotificationSettings>(settings);
+        
+        // Register the HttpClient with Maskinporten authentication
+        services.AddMaskinportenHttpClient<TClientDefinition, IDdMessagingService, Services.DdMessagingService>(
+            maskinportenSettings,
+            clientDefinition =>
             {
-                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
-                var httpClient = httpClientFactory.CreateClient(nameof(IDdMessagingService));
-                var logger = sp.GetRequiredService<ILogger<Services.DdMessagingService>>();
-                return new Services.DdMessagingService(httpClient, settings, logger);
+                // Consumers don't need to specify the scope because it will be the same for all correspondence API calls
+                ((dynamic)clientDefinition).ClientSettings.Scope = "altinn:serviceowner altinn:correspondence.write";
+                
+                // Allow consumers to configure additional settings (e.g., EnableDebugLogging)
+                configureClient?.Invoke(clientDefinition);
             });
-            
-            // Register settings
-            serviceCollection.AddSingleton(_ => settings);
-        });
-
-        return hostBuilder;
+        
+        return services;
     }
 }

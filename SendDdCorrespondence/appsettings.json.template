@@ -1,95 +1,81 @@
 {
   "Settings": {
     "CorrespondenceSettings": "oed-correspondence,digdir",
-    "UseAltinnTestServers": true
+    "UseAltinnTestServers": true,
+    "CountryCode": "0192"
   },
-  "MaskinportenSettings": {
-    "ClientId": "YOUR_CLIENT_ID_HERE",
-    "Scope": "altinn:serviceowner altinn:correspondence.write",
-    "Authority": "https://test.maskinporten.no/",
-    "TokenEndpoint": "https://test.maskinporten.no/token",
-    "JwkBase64Encoded": "YOUR_BASE64_ENCODED_JWK_HERE",
-    "ExhangeToAltinnToken": false,
-    "OverwriteAuthorizationHeader": true,
-    "EnableDebugLogging": true
+  "DdConfig": {
+    "MaskinportenSettings": {
+      "ClientId": "YOUR_CLIENT_ID_HERE",
+      "Environment": "test",
+      "EncodedJwk": "YOUR_BASE64_ENCODED_JWK_HERE"
+    }
   }
 }
 
 /*
- * SETUP INSTRUCTIONS - Using Altinn.ApiClients.Maskinporten
- * ==========================================================
+ * SETUP INSTRUCTIONS - Simplified Altinn 3 Pattern
+ * ==================================================
  * 
- * This template uses Altinn's official Maskinporten helper library instead of 
- * custom JWT implementation. Much simpler and more reliable!
+ * This example uses the new simplified registration pattern that follows
+ * Altinn 3 conventions. The library handles Maskinporten authentication
+ * automatically using AddMaskinportenHttpClient.
  * 
- * 1. REQUEST SCOPES FROM ALTINN or create those if you have Maskinporten user and access
- *    Email: servicedesk@altinn.no
- *    Request access to these scopes:
- *    - altinn:serviceowner
- *    - altinn:correspondence.write
- * 
- * 2. GET JWK FROM AZURE KEY VAULT (SECRETS)
- *    They are called (test env - digdir-tt02-apps-kv (KeyVault name)):
+ * 1. GET CREDENTIALS FROM AZURE KEY VAULT
+ *    For test environment (digdir-tt02-apps-kv KeyVault):
  *    - OedConfig--MaskinportenSettings--ClientId
  *    - OedConfig--MaskinportenSettings--EncodedJwk
  * 
- * 3. CONFIGURE THIS FILE
- *    a) Replace "YOUR_CLIENT_ID_HERE" with the client_id from step 4
- *    b) Replace "YOUR_BASE64_ENCODED_JWK_HERE" with the base64 JWK from step 3
- *    c) For production, change Authority and TokenEndpoint to:
- *       - Authority: "https://maskinporten.no/"
- *       - TokenEndpoint: "https://maskinporten.no/token"
- *       - UseAltinnTestServers: false
+ * 2. CONFIGURE THIS FILE
+ *    a) Replace "YOUR_CLIENT_ID_HERE" with your Maskinporten client ID
+ *    b) Replace "YOUR_BASE64_ENCODED_JWK_HERE" with the base64-encoded JWK
+ *    c) Update "oed-correspondence,digdir" to your "resourceId,senderOrg"
  * 
- * 6. USE USER SECRETS FOR DEVELOPMENT
- *    Instead of putting real credentials in this file, use user secrets:
- *    
- *    dotnet user-secrets set "MaskinportenSettings:ClientId" "your-client-id"
- *    dotnet user-secrets set "MaskinportenSettings:JwkBase64Encoded" "your-base64-jwk"
- *    
- *    This way you can keep this file with placeholder values.
+ * 3. FOR PRODUCTION
+ *    Change these settings:
+ *    - Environment: "prod" (instead of "test")
+ *    - UseAltinnTestServers: false
  * 
- * 7. RENAME THIS FILE
- *    Rename this template to appsettings.json:
+ * 4. USE USER SECRETS FOR DEVELOPMENT
+ *    Instead of putting credentials in this file, use user secrets:
+ *    
+ *    dotnet user-secrets set "DdConfig:MaskinportenSettings:ClientId" "your-client-id"
+ *    dotnet user-secrets set "DdConfig:MaskinportenSettings:EncodedJwk" "your-base64-jwk"
+ *    
+ *    This keeps sensitive data out of your repository.
+ * 
+ * 5. RENAME THIS FILE (if needed)
  *    mv appsettings.json.template appsettings.json
  * 
  * CONFIGURATION REFERENCE
  * =======================
  * 
  * Settings:
- *   CorrespondenceSettings: "resourceId,senderOrg"
+ *   CorrespondenceSettings: "resourceId,senderOrg" (REQUIRED)
  *     - resourceId: Your Altinn resource ID (created in Altinn Studio)
  *     - senderOrg: Your organization identifier
  *   
- *   UseAltinnTestServers: true|false
+ *   UseAltinnTestServers: true|false (REQUIRED)
  *     - true: Use TT02 test environment (platform.tt02.altinn.no)
  *     - false: Use production environment (platform.altinn.no)
+ *   
+ *   CountryCode: "0192" (OPTIONAL, defaults to "0192" for Norway)
+ *     - ISO 6523 ICD code for organization numbers
  * 
- * MaskinportenSettings:
- *   ClientId: Your Maskinporten client ID from Samarbeidsportalen
+ * DdConfig:MaskinportenSettings:
+ *   ClientId: Your Maskinporten client ID (REQUIRED)
+ *     - Obtained from Samarbeidsportalen or Azure Key Vault
  *   
- *   Scope: Space-separated list of required scopes
- *     - Must match what was registered in Samarbeidsportalen
+ *   Environment: "test" or "prod" (REQUIRED)
+ *     - test: Uses test.maskinporten.no
+ *     - prod: Uses maskinporten.no
  *   
- *   Authority: Maskinporten issuer URL
- *     - Test: https://test.maskinporten.no/
- *     - Prod: https://maskinporten.no/
- *   
- *   TokenEndpoint: Maskinporten token URL
- *     - Test: https://test.maskinporten.no/token
- *     - Prod: https://maskinporten.no/token
- *   
- *   JwkBase64Encoded: Base64 encoded JSON Web Key from Azure Key Vault
- *     - Contains RSA private key components
- *     - Used for JWT signing
- *   
- *   ExhangeToAltinnToken: false
- *     - Set to true if you want to exchange Maskinporten token for Altinn token
- *     - For correspondence API, direct Maskinporten tokens work fine
- *   
- *   OverwriteAuthorizationHeader: true
- *     - Ensures Authorization header is properly set
- *   
- *   EnableDebugLogging: true
- *     - Enable for development to see token requests
- *     - Disable in production for security
+ *   EncodedJwk: Base64-encoded JWK (REQUIRED)
+ *     - Contains RSA private key for JWT signing
+ *     - Obtained from Azure Key Vault
+ * 
+ * NOTES:
+ * - Scope is hardcoded: "altinn:serviceowner altinn:correspondence.write"
+ * - No need to configure Authority, TokenEndpoint, or other advanced settings
+ * - The library handles all authentication automatically
+ * - EnableDebugLogging can be set in code when calling AddDdMessagingService

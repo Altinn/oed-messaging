@@ -6,6 +6,8 @@ using Altinn.Dd.Correspondence.Models.Interfaces;
 using Altinn.Dd.Correspondence.Services.Interfaces;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel.DataAnnotations;
+using Polly;
+using Polly.Retry;
 
 namespace Altinn.Dd.Correspondence.Services;
 
@@ -39,6 +41,7 @@ public class DdMessagingService : IDdMessagingService
 
     private readonly AltinnCorrespondenceClient _correspondenceClient;
     private readonly ILogger<DdMessagingService> _logger;
+    private readonly AsyncRetryPolicy _retryPolicy;
 
     public DdMessagingService(HttpClient httpClient, IDdNotificationSettings settings, ILogger<DdMessagingService> logger)
     {
@@ -57,6 +60,22 @@ public class DdMessagingService : IDdMessagingService
         
         _correspondenceClient = new AltinnCorrespondenceClient(httpClient);
         _logger = logger;
+        
+        _retryPolicy = Policy
+            .Handle<AltinnCorrespondenceException>()
+            .Or<HttpRequestException>()
+            .WaitAndRetryAsync(
+                retryCount: 3,
+                sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+                onRetry: (exception, timespan, retryCount, context) =>
+                {
+                    _logger.LogWarning(
+                        exception,
+                        "Retry {RetryCount} after {Delay}s due to: {ExceptionMessage}",
+                        retryCount,
+                        timespan.TotalSeconds,
+                        exception.Message);
+                });
 
         var correspondenceSettings = settings.CorrespondenceSettings.Split(',');
         if (correspondenceSettings.Length < 2)
@@ -122,8 +141,9 @@ public class DdMessagingService : IDdMessagingService
                 IdempotentKey = idempotencyKey
             };
 
-            // Send the correspondence using Altinn 3 API
-            var result = await _correspondenceClient.CorrespondencePOSTAsync(correspondenceRequest);
+            // Send the correspondence using Altinn 3 API with retry policy
+            var result = await _retryPolicy.ExecuteAsync(async () =>
+                await _correspondenceClient.CorrespondencePOSTAsync(correspondenceRequest));
 
             _logger.LogInformation("Successfully sent correspondence to recipient {Recipient}", correspondence.Recipient);
             

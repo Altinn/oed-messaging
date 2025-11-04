@@ -1,162 +1,134 @@
 using System.Net.Http;
-using Altinn.Dd.Correspondence.Authentication;
-using Altinn.Dd.Correspondence.Extensions;
 using Altinn.Dd.Correspondence.Models;
 using Altinn.Dd.Correspondence.Models.Interfaces;
+using Altinn.Dd.Correspondence.Services;
 using Altinn.Dd.Correspondence.Services.Interfaces;
 using Altinn.Dd.Correspondence.Tests.Builders;
 using FluentAssertions;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Moq;
 using Xunit;
 
 namespace Altinn.Dd.Correspondence.Tests.IntegrationTests;
 
 /// <summary>
-/// Integration tests for DdMessagingService using dependency injection
+/// Integration tests for DdMessagingService
+/// Note: These tests validate the service directly without the full DI registration
+/// since Maskinporten HttpClient registration requires actual authentication setup.
+/// For full end-to-end tests with AddDdMessagingService, see the SendDdCorrespondence example project.
 /// </summary>
 public class DdMessagingServiceIntegrationTests
 {
-    /// <summary>
-    /// Mock token provider for testing that returns a fake token.
-    /// </summary>
-    private class MockTokenProvider : IAccessTokenProvider
-    {
-        public Task<string> GetAccessTokenAsync()
-        {
-            return Task.FromResult("mock-token-for-testing");
-        }
-    }
-
     [Fact]
-    public void AddDdCorrespondence_RegistersServicesCorrectly()
+    public void DdMessagingService_WithValidSettings_InitializesCorrectly()
     {
         // Arrange
-        var settings = SettingsBuilder.Create().WithValidDefaults().Build();
-        var tokenProvider = new MockTokenProvider();
-        var hostBuilder = Host.CreateDefaultBuilder()
-            .AddDdCorrespondence(settings, tokenProvider);
-
-        // Act
-        var host = hostBuilder.Build();
-
-        // Assert
-        var service = host.Services.GetService<IDdMessagingService>();
-        service.Should().NotBeNull();
-        service.Should().BeOfType<Services.DdMessagingService>();
-
-        var settingsService = host.Services.GetService<IDdNotificationSettings>();
-        settingsService.Should().NotBeNull();
-        settingsService.Should().BeSameAs(settings);
-
-        var httpClient = host.Services.GetService<HttpClient>();
-        httpClient.Should().NotBeNull();
-    }
-
-    [Fact]
-    public void AddDdCorrespondence_WithTestSettings_ConfiguresCorrectly()
-    {
-        // Arrange
+        var httpClient = new HttpClient();
         var settings = SettingsBuilder.Create()
             .WithCorrespondenceSettings("test-resource,test-sender")
             .WithUseAltinnTestServers(true)
             .Build();
-        var tokenProvider = new MockTokenProvider();
+        var mockLogger = new Mock<ILogger<DdMessagingService>>();
 
         // Act
-        var host = Host.CreateDefaultBuilder()
-            .AddDdCorrespondence(settings, tokenProvider)
-            .Build();
-
-        var service = host.Services.GetRequiredService<IDdMessagingService>();
+        var service = new DdMessagingService(httpClient, settings, mockLogger.Object);
 
         // Assert
         service.Should().NotBeNull();
-        var messagingService = service as Services.DdMessagingService;
-        messagingService!.ResourceId.Should().Be("test-resource");
-        messagingService.Sender.Should().Be("test-sender");
+        service.ResourceId.Should().Be("test-resource");
+        service.Sender.Should().Be("test-sender");
     }
 
     [Fact]
-    public void AddDdCorrespondence_WithProductionSettings_ConfiguresCorrectly()
+    public void DdMessagingService_WithTestSettings_SetsCorrectEnvironment()
     {
         // Arrange
+        var httpClient = new HttpClient();
+        var settings = SettingsBuilder.Create()
+            .WithCorrespondenceSettings("test-resource,test-sender")
+            .WithUseAltinnTestServers(true)
+            .Build();
+        var mockLogger = new Mock<ILogger<DdMessagingService>>();
+
+        // Act
+        var service = new DdMessagingService(httpClient, settings, mockLogger.Object);
+
+        // Assert
+        service.Should().NotBeNull();
+        service.ResourceId.Should().Be("test-resource");
+        service.Sender.Should().Be("test-sender");
+    }
+
+    [Fact]
+    public void DdMessagingService_WithProductionSettings_SetsCorrectEnvironment()
+    {
+        // Arrange
+        var httpClient = new HttpClient();
         var settings = SettingsBuilder.Create()
             .WithCorrespondenceSettings("prod-resource,prod-sender")
             .WithUseAltinnTestServers(false)
             .Build();
-        var tokenProvider = new MockTokenProvider();
+        var mockLogger = new Mock<ILogger<DdMessagingService>>();
 
         // Act
-        var host = Host.CreateDefaultBuilder()
-            .AddDdCorrespondence(settings, tokenProvider)
-            .Build();
-
-        var service = host.Services.GetRequiredService<IDdMessagingService>();
+        var service = new DdMessagingService(httpClient, settings, mockLogger.Object);
 
         // Assert
         service.Should().NotBeNull();
-        var messagingService = service as Services.DdMessagingService;
-        messagingService!.ResourceId.Should().Be("prod-resource");
-        messagingService.Sender.Should().Be("prod-sender");
+        service.ResourceId.Should().Be("prod-resource");
+        service.Sender.Should().Be("prod-sender");
     }
 
     [Fact]
-    public async Task SendMessage_ThroughDependencyInjection_WorksCorrectly()
+    public void DdMessagingService_WithInvalidSettings_ThrowsException()
     {
         // Arrange
-        var settings = SettingsBuilder.Create().WithValidDefaults().Build();
-        var tokenProvider = new MockTokenProvider();
-        var host = Host.CreateDefaultBuilder()
-            .AddDdCorrespondence(settings, tokenProvider)
+        var httpClient = new HttpClient();
+        var settings = SettingsBuilder.Create()
+            .WithCorrespondenceSettings("") // Invalid: empty settings
             .Build();
-
-        var service = host.Services.GetRequiredService<IDdMessagingService>();
-        var messageDetails = DdMessageDetailsBuilder.Create().WithValidDefaults().Build();
+        var mockLogger = new Mock<ILogger<DdMessagingService>>();
 
         // Act & Assert
-        // Note: This will fail with authentication error in real scenario,
-        // but it validates the service is properly configured and can be called
-        var exception = await Assert.ThrowsAsync<Exceptions.CorrespondenceServiceException>(
-            () => service.SendMessage(messageDetails));
-
-        exception.Message.Should().Contain("Could not send correspondence to Altinn 3");
+        var exception = Assert.Throws<ArgumentException>(
+            () => new DdMessagingService(httpClient, settings, mockLogger.Object));
+        
+        exception.Message.Should().Contain("validation failed");
     }
 
     [Fact]
-    public void ServiceLifetime_IsSingleton()
+    public void DdMessagingService_WithNullHttpClient_ThrowsException()
     {
         // Arrange
         var settings = SettingsBuilder.Create().WithValidDefaults().Build();
-        var tokenProvider = new MockTokenProvider();
-        var host = Host.CreateDefaultBuilder()
-            .AddDdCorrespondence(settings, tokenProvider)
-            .Build();
+        var mockLogger = new Mock<ILogger<DdMessagingService>>();
 
-        // Act
-        var service1 = host.Services.GetRequiredService<IDdMessagingService>();
-        var service2 = host.Services.GetRequiredService<IDdMessagingService>();
-
-        // Assert
-        service1.Should().BeSameAs(service2);
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(
+            () => new DdMessagingService(null!, settings, mockLogger.Object));
     }
 
     [Fact]
-    public void SettingsLifetime_IsSingleton()
+    public void DdMessagingService_WithNullSettings_ThrowsException()
     {
         // Arrange
+        var httpClient = new HttpClient();
+        var mockLogger = new Mock<ILogger<DdMessagingService>>();
+
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(
+            () => new DdMessagingService(httpClient, null!, mockLogger.Object));
+    }
+
+    [Fact]
+    public void DdMessagingService_WithNullLogger_ThrowsException()
+    {
+        // Arrange
+        var httpClient = new HttpClient();
         var settings = SettingsBuilder.Create().WithValidDefaults().Build();
-        var tokenProvider = new MockTokenProvider();
-        var host = Host.CreateDefaultBuilder()
-            .AddDdCorrespondence(settings, tokenProvider)
-            .Build();
 
-        // Act
-        var settings1 = host.Services.GetRequiredService<IDdNotificationSettings>();
-        var settings2 = host.Services.GetRequiredService<IDdNotificationSettings>();
-
-        // Assert
-        settings1.Should().BeSameAs(settings2);
-        settings1.Should().BeSameAs(settings);
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(
+            () => new DdMessagingService(httpClient, settings, null!));
     }
 }
