@@ -1,10 +1,15 @@
 using System.Net.Http;
+using Altinn.ApiClients.Maskinporten.Services;
+using Altinn.Dd.Correspondence.Extensions;
 using Altinn.Dd.Correspondence.Models;
 using Altinn.Dd.Correspondence.Models.Interfaces;
 using Altinn.Dd.Correspondence.Services;
 using Altinn.Dd.Correspondence.Services.Interfaces;
 using Altinn.Dd.Correspondence.Tests.Builders;
 using FluentAssertions;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -130,5 +135,68 @@ public class DdMessagingServiceIntegrationTests
         // Act & Assert
         Assert.Throws<ArgumentNullException>(
             () => new DdMessagingService(httpClient, settings, null!));
+    }
+
+    [Fact]
+    public void AddDdMessagingService_RegistersServicesCorrectly()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        
+        // Create configuration with required settings
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                { "DdConfig:MaskinportenSettings:ClientId", "test-client-id" },
+                { "DdConfig:MaskinportenSettings:Environment", "test" },
+                { "DdConfig:MaskinportenSettings:EncodedJwk", "test-jwk" },
+                { "DdConfig:CorrespondenceSettings:CorrespondenceSettings", "test-resource,test-sender" },
+                { "DdConfig:CorrespondenceSettings:UseAltinnTestServers", "true" },
+                { "DdConfig:CorrespondenceSettings:CountryCode", "0192" }
+            })
+            .Build();
+
+        // Act
+        services.AddDdMessagingService<SettingsJwkClientDefinition>(
+            configuration.GetSection("DdConfig:MaskinportenSettings"),
+            configuration.GetSection("DdConfig:CorrespondenceSettings"));
+
+        var serviceProvider = services.BuildServiceProvider();
+
+        // Assert
+        var messagingService = serviceProvider.GetService<IDdMessagingService>();
+        messagingService.Should().NotBeNull();
+        messagingService.Should().BeOfType<Services.DdMessagingService>();
+
+        var settingsService = serviceProvider.GetService<IDdNotificationSettings>();
+        settingsService.Should().NotBeNull();
+        settingsService.CorrespondenceSettings.Should().Be("test-resource,test-sender");
+        settingsService.UseAltinnTestServers.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AddDdMessagingService_WithInvalidCorrespondenceSettings_ThrowsException()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                { "DdConfig:MaskinportenSettings:ClientId", "test-client-id" },
+                { "DdConfig:MaskinportenSettings:Environment", "test" },
+                { "DdConfig:MaskinportenSettings:EncodedJwk", "test-jwk" }
+                // Missing CorrespondenceSettings section
+            })
+            .Build();
+
+        // Act & Assert
+        var exception = Assert.Throws<ArgumentException>(() =>
+            services.AddDdMessagingService<SettingsJwkClientDefinition>(
+                configuration.GetSection("DdConfig:MaskinportenSettings"),
+                configuration.GetSection("DdConfig:CorrespondenceSettings")));
+
+        exception.Message.Should().Contain("Correspondence settings are required");
+        exception.Message.Should().Contain("DdConfig:CorrespondenceSettings");
     }
 }

@@ -7,7 +7,9 @@ on:
   workflow_dispatch:
   push:
     tags:
-    - "correspondence-v*"
+    # Pattern matches tags like correspondence-v1.0.0, correspondence-v1.0.0-preview, etc.
+    # Requires at least one dot after the version prefix to avoid matching invalid tags
+    - "correspondence-v*.*"
 
 jobs:
   build:
@@ -21,7 +23,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '9.0.x'
+        dotnet-version: '8.0.x'
         
     - name: Set VERSION variable from tag or default
       run: |

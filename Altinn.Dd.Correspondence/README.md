@@ -2,6 +2,17 @@
 
 A .NET library for sending correspondence through Altinn 3 Correspondence API. This library follows Altinn 3 patterns for HttpClient registration with Maskinporten authentication.
 
+## Breaking Changes
+
+If you're upgrading from a previous version that used the `AddDdCorrespondence` extension method with `IAccessTokenProvider`, this version introduces breaking changes:
+
+- **Removed**: `IHostBuilder.AddDdCorrespondence()` extension method
+- **Added**: `IServiceCollection.AddDdMessagingService<TClientDefinition>()` extension method
+- **Removed**: Requirement to implement `IAccessTokenProvider` interface
+- **Changed**: Configuration structure now requires `DdConfig:CorrespondenceSettings` instead of root-level `Settings`
+
+See the [Migration from Old Pattern](#migration-from-old-pattern) section below for detailed migration instructions.
+
 ## Quick Start
 
 ### 1. Install Packages
@@ -159,7 +170,23 @@ catch (CorrespondenceServiceException ex)
 }
 ```
 
-Retry logic with exponential backoff (3 retries) is built into the service and handles transient failures automatically.
+## Retry Logic
+
+The service automatically retries failed requests with exponential backoff to handle transient network and API errors.
+
+**Retry Configuration:**
+- **Retry count**: 3 attempts (initial attempt + 3 retries)
+- **Backoff strategy**: Exponential (2s, 4s, 8s delays between retries)
+- **Retried exceptions**:
+  - `AltinnCorrespondenceException` - API-level errors that may be transient
+  - `HttpRequestException` - HTTP request failures
+  - `TaskCanceledException` - Timeout scenarios
+  - `SocketException` - Network connectivity issues
+
+**Retry Behavior:**
+- Retries are logged with warning level, including exception type and retry count
+- After all retries are exhausted, the original exception is wrapped in `CorrespondenceServiceException` and re-thrown
+- Idempotency keys are automatically generated for each request, preventing duplicate messages during retries
 
 ## Migration from Old Pattern
 
@@ -219,8 +246,8 @@ This example serves as both a testing tool and a reference implementation for in
 This guide covers migrating from `Altinn.Oed.Messaging` to `Altinn.Dd.Correspondence` (Altinn 3). The new package keeps the same high-level service contract while simplifying the receipt model.
 
 ### Prerequisites
-- `Altinn.Dd.Correspondence` v1.0.0 (supports net8.0 and net9.0)
-- .NET 8.0+ or .NET 9.0+
+- `Altinn.Dd.Correspondence` v1.0.0 (supports net8.0)
+- .NET 8.0+
 - Maskinporten integration configured in your app
 
 ### Step 1: Update Package References
@@ -509,7 +536,7 @@ var problemDetailsActual = (Microsoft.AspNetCore.Mvc.ProblemDetails)objectActual
 
 1. **"Type not found"** (e.g., `ReceiptExternal`): add `using Altinn.Dd.Correspondence.ExternalServices.Correspondence;`
 2. **"BearerTokenHandler not found"**: you don't register it manually; ensure `builder.Host.AddOedCorrespondence(...)` is called and Maskinporten adapter is registered as `IAccessTokenProvider`.
-3. **NU1605/NU1202**: ensure your consuming app uses net8.0+ and that the package you're consuming is the net8.0/net9.0 build (v1.0.0) with Microsoft.Extensions 8.0.x alignment.
+3. **NU1605/NU1202**: ensure your consuming app uses net8.0+ and that the package you're consuming is the net8.0 build (v1.0.0) with Microsoft.Extensions 8.0.x alignment.
 4. **"IAccessTokenProvider not found"**: implement the interface or use the provided `MaskinportenTokenAdapter` example.
 
 ## API Reference
@@ -564,7 +591,7 @@ The workflow will automatically:
 
 ### Workflow Features
 
-- **Multi-targeting**: Builds for both `net8.0` and `net9.0`
+- **Target Framework**: Builds for `net8.0`
 - **Testing**: Runs all unit and integration tests before packaging
 - **Debug symbols**: Includes `.snupkg` files for debugging
 - **Artifact upload**: Non-tagged builds create downloadable artifacts

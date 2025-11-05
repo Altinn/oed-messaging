@@ -5,6 +5,7 @@ using Altinn.Dd.Correspondence.Models.Interfaces;
 using Altinn.Dd.Correspondence.Services.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.CSharp.RuntimeBinder;
 
 namespace Altinn.Dd.Correspondence.Extensions;
 
@@ -31,7 +32,11 @@ public static class ServiceCollectionExtensions
         var settings = correspondenceSettings.Get<Settings>();
         if (settings == null)
         {
-            throw new ArgumentException("Correspondence settings are required", nameof(correspondenceSettings));
+            var configPath = correspondenceSettings.Path ?? "unknown";
+            throw new ArgumentException(
+                $"Correspondence settings are required but could not be bound from configuration section '{configPath}'. " +
+                $"Ensure the section exists and contains valid settings.", 
+                nameof(correspondenceSettings));
         }
         
         services.AddSingleton<IDdNotificationSettings>(settings);
@@ -42,7 +47,18 @@ public static class ServiceCollectionExtensions
             clientDefinition =>
             {
                 // Consumers don't need to specify the scope because it will be the same for all correspondence API calls
-                ((dynamic)clientDefinition).ClientSettings.Scope = "altinn:serviceowner altinn:correspondence.write";
+                try
+                {
+                    dynamic dynamicClientDefinition = clientDefinition;
+                    dynamicClientDefinition.ClientSettings.Scope = "altinn:serviceowner altinn:correspondence.write";
+                }
+                catch (RuntimeBinderException ex)
+                {
+                    throw new InvalidOperationException(
+                        $"Failed to set Scope on client definition of type {clientDefinition.GetType().FullName}. " +
+                        $"The client definition must have a ClientSettings property with a Scope property. " +
+                        $"Original error: {ex.Message}", ex);
+                }
                 
                 // Allow consumers to configure additional settings (e.g., EnableDebugLogging)
                 configureClient?.Invoke(clientDefinition);

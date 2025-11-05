@@ -1,14 +1,14 @@
 {
-  "Settings": {
-    "CorrespondenceSettings": "oed-correspondence,digdir",
-    "UseAltinnTestServers": true,
-    "CountryCode": "0192"
-  },
   "DdConfig": {
     "MaskinportenSettings": {
       "ClientId": "YOUR_CLIENT_ID_HERE",
       "Environment": "test",
       "EncodedJwk": "YOUR_BASE64_ENCODED_JWK_HERE"
+    },
+    "CorrespondenceSettings": {
+      "CorrespondenceSettings": "oed-correspondence,digdir",
+      "UseAltinnTestServers": true,
+      "CountryCode": "0192"
     }
   }
 }

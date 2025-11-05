@@ -1,4 +1,5 @@
 using System.Net.Http;
+using System.Net.Sockets;
 using Altinn.Dd.Correspondence.Exceptions;
 using Altinn.Dd.Correspondence.ExternalServices.Correspondence;
 using Altinn.Dd.Correspondence.Models;
@@ -64,6 +65,8 @@ public class DdMessagingService : IDdMessagingService
         _retryPolicy = Policy
             .Handle<AltinnCorrespondenceException>()
             .Or<HttpRequestException>()
+            .Or<TaskCanceledException>()
+            .Or<SocketException>()
             .WaitAndRetryAsync(
                 retryCount: 3,
                 sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
@@ -71,9 +74,11 @@ public class DdMessagingService : IDdMessagingService
                 {
                     _logger.LogWarning(
                         exception,
-                        "Retry {RetryCount} after {Delay}s due to: {ExceptionMessage}",
+                        "Retry {RetryCount}/{MaxRetries} after {DelaySeconds}s due to {ExceptionType}: {ExceptionMessage}",
                         retryCount,
+                        3,
                         timespan.TotalSeconds,
+                        exception.GetType().Name,
                         exception.Message);
                 });
 
