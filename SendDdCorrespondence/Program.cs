@@ -18,11 +18,7 @@ var host = Host.CreateDefaultBuilder(args)
         // Register DD Messaging Service with Maskinporten authentication
         services.AddDdMessagingService<SettingsJwkClientDefinition>(
             configuration.GetSection("DdConfig:MaskinportenSettings"),
-            configuration.GetSection("DdConfig:CorrespondenceSettings"),
-            clientDefinition =>
-            {
-                clientDefinition.ClientSettings.EnableDebugLogging = true;
-            });
+            configuration.GetSection("DdConfig:CorrespondenceSettings"));
     })
     .Build();
 

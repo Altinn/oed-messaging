@@ -2,17 +2,6 @@
 
 A .NET library for sending correspondence through Altinn 3 Correspondence API. This library follows Altinn 3 patterns for HttpClient registration with Maskinporten authentication.
 
-## Breaking Changes
-
-If you're upgrading from a previous version that used the `AddDdCorrespondence` extension method with `IAccessTokenProvider`, this version introduces breaking changes:
-
-- **Removed**: `IHostBuilder.AddDdCorrespondence()` extension method
-- **Added**: `IServiceCollection.AddDdMessagingService<TClientDefinition>()` extension method
-- **Removed**: Requirement to implement `IAccessTokenProvider` interface
-- **Changed**: Configuration structure now requires `DdConfig:CorrespondenceSettings` instead of root-level `Settings`
-
-See the [Migration from Old Pattern](#migration-from-old-pattern) section below for detailed migration instructions.
-
 ## Quick Start
 
 ### 1. Install Packages
@@ -49,6 +38,7 @@ Add to your `appsettings.json`:
 - `ClientId`: Your Maskinporten client ID (required)
 - `Environment`: Either "test" or "prod" for Maskinporten environment
 - `EncodedJwk`: Base64-encoded JWK from Azure Key Vault
+- `EnableDebugLogging`: Optional flag to emit verbose Maskinporten diagnostics (only enable temporarily)
 - `CorrespondenceSettings`: Format is "resourceId,senderOrg"
 - `UseAltinnTestServers`: Set to `true` for TT02 test environment, `false` for production
 - `CountryCode`: Country code for organization numbers (default: "0192" for Norway)
@@ -68,13 +58,10 @@ using Microsoft.Extensions.DependencyInjection;
 // In ConfigureServices or builder.Services
 services.AddDdMessagingService<SettingsJwkClientDefinition>(
     configuration.GetSection("DdConfig:MaskinportenSettings"),
-    configuration.GetSection("DdConfig:CorrespondenceSettings"),
-    clientDefinition =>
-    {
-        // Optional: configure additional settings
-        clientDefinition.ClientSettings.EnableDebugLogging = true;
-    });
+    configuration.GetSection("DdConfig:CorrespondenceSettings"));
 ```
+
+> `AddDdMessagingService` enforces the required correspondence scope (`altinn:serviceowner altinn:correspondence.write`) and wires up a Maskinporten-enabled `HttpClient` with Polly-based retries. Consumers only need to supply environment-specific credentials. Set `EnableDebugLogging` in configuration when troubleshooting.
 
 ### 4. Use the Service
 
@@ -117,6 +104,7 @@ public class MyService
 **What the library does for you:**
 - Automatic Maskinporten authentication via `Altinn.ApiClients.Maskinporten`
 - Hardcoded scope for correspondence API (no need to configure)
+- Resilient HTTP client with Polly retry policy (exponential backoff)
 - Automatic organization number formatting
 - Comprehensive logging and error handling
 - Idempotency support to prevent duplicate messages
@@ -175,18 +163,17 @@ catch (CorrespondenceServiceException ex)
 The service automatically retries failed requests with exponential backoff to handle transient network and API errors.
 
 **Retry Configuration:**
-- **Retry count**: 3 attempts (initial attempt + 3 retries)
+- **Retry count**: 3 additional attempts (initial attempt + 3 retries)
 - **Backoff strategy**: Exponential (2s, 4s, 8s delays between retries)
-- **Retried exceptions**:
-  - `AltinnCorrespondenceException` - API-level errors that may be transient
-  - `HttpRequestException` - HTTP request failures
-  - `TaskCanceledException` - Timeout scenarios
-  - `SocketException` - Network connectivity issues
+- **Retried exceptions/status codes**:
+  - `HttpRequestException`, `TaskCanceledException`, `SocketException`
+  - HTTP 408 (Request Timeout)
+  - HTTP 429 (Too Many Requests)
+  - HTTP 5xx status codes
 
 **Retry Behavior:**
-- Retries are logged with warning level, including exception type and retry count
-- After all retries are exhausted, the original exception is wrapped in `CorrespondenceServiceException` and re-thrown
-- Idempotency keys are automatically generated for each request, preventing duplicate messages during retries
+- Retries execute transparently without duplicate messages thanks to the API’s idempotency keys
+- After all retries are exhausted, the original exception is surfaced to the caller
 
 ## Migration from Old Pattern
 
@@ -201,17 +188,13 @@ builder.Host.AddDdCorrespondence(settings, accessTokenProvider);
 ```csharp
 services.AddDdMessagingService<SettingsJwkClientDefinition>(
     configuration.GetSection("DdConfig:MaskinportenSettings"),
-    configuration.GetSection("DdConfig:CorrespondenceSettings"),
-    clientDefinition =>
-    {
-        clientDefinition.ClientSettings.EnableDebugLogging = true;
-    });
+    configuration.GetSection("DdConfig:CorrespondenceSettings"));
 ```
 
 The new pattern:
 - Eliminates the need for custom `IAccessTokenProvider` implementations
 - Uses the standard Altinn 3 Maskinporten HttpClient pattern
-- Simplifies configuration (only ClientId is required from appsettings)
+- Simplifies configuration (only ClientId, Environment, EncodedJwk, and optional `EnableDebugLogging` are required from appsettings)
 - Hardcodes the scope internally (one less thing to configure)
 - **Validation Errors**: Settings are validated using data annotations
 - **API Errors**: Altinn 3 API errors are preserved and wrapped for consistency

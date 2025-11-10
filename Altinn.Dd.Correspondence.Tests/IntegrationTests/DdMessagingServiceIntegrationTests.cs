@@ -1,4 +1,6 @@
 using System.Net.Http;
+using System.Reflection;
+using Altinn.ApiClients.Maskinporten.Config;
 using Altinn.ApiClients.Maskinporten.Services;
 using Altinn.Dd.Correspondence.Extensions;
 using Altinn.Dd.Correspondence.Models;
@@ -161,9 +163,8 @@ public class DdMessagingServiceIntegrationTests
             configuration.GetSection("DdConfig:MaskinportenSettings"),
             configuration.GetSection("DdConfig:CorrespondenceSettings"));
 
-        var serviceProvider = services.BuildServiceProvider();
-
         // Assert
+        var serviceProvider = services.BuildServiceProvider();
         var messagingService = serviceProvider.GetService<IDdMessagingService>();
         messagingService.Should().NotBeNull();
         messagingService.Should().BeOfType<Services.DdMessagingService>();
@@ -172,6 +173,10 @@ public class DdMessagingServiceIntegrationTests
         settingsService.Should().NotBeNull();
         settingsService.CorrespondenceSettings.Should().Be("test-resource,test-sender");
         settingsService.UseAltinnTestServers.Should().BeTrue();
+
+        var boundMaskinportenSettings = BindMaskinportenSettings(configuration.GetSection("DdConfig:MaskinportenSettings"));
+        boundMaskinportenSettings.Scope.Should().Be("altinn:serviceowner altinn:correspondence.write");
+        boundMaskinportenSettings.EnableDebugLogging.Should().NotBeTrue();
     }
 
     [Fact]
@@ -198,5 +203,80 @@ public class DdMessagingServiceIntegrationTests
 
         exception.Message.Should().Contain("Correspondence settings are required");
         exception.Message.Should().Contain("DdConfig:CorrespondenceSettings");
+    }
+
+    [Fact]
+    public void AddDdMessagingService_EnableDebugLoggingThroughConfiguration_SetsFlag()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                { "DdConfig:MaskinportenSettings:ClientId", "test-client-id" },
+                { "DdConfig:MaskinportenSettings:Environment", "test" },
+                { "DdConfig:MaskinportenSettings:EncodedJwk", "test-jwk" },
+                { "DdConfig:MaskinportenSettings:EnableDebugLogging", "true" },
+                { "DdConfig:CorrespondenceSettings:CorrespondenceSettings", "test-resource,test-sender" },
+                { "DdConfig:CorrespondenceSettings:UseAltinnTestServers", "true" },
+                { "DdConfig:CorrespondenceSettings:CountryCode", "0192" }
+            })
+            .Build();
+
+        // Act
+        services.AddDdMessagingService<SettingsJwkClientDefinition>(
+            configuration.GetSection("DdConfig:MaskinportenSettings"),
+            configuration.GetSection("DdConfig:CorrespondenceSettings"));
+
+        // Assert
+        var boundMaskinportenSettings = BindMaskinportenSettings(configuration.GetSection("DdConfig:MaskinportenSettings"));
+        boundMaskinportenSettings.EnableDebugLogging.Should().BeTrue();
+        boundMaskinportenSettings.Scope.Should().Be("altinn:serviceowner altinn:correspondence.write");
+    }
+
+    [Theory]
+    [InlineData("ClientId", "Maskinporten ClientId must be provided.")]
+    [InlineData("EncodedJwk", "Maskinporten EncodedJwk must be provided.")]
+    [InlineData("Environment", "Maskinporten Environment must be provided.")]
+    public void AddDdMessagingService_MissingRequiredMaskinportenSetting_Throws(string missingKey, string expectedMessage)
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        var baseSettings = new Dictionary<string, string?>
+        {
+            { "DdConfig:MaskinportenSettings:ClientId", "test-client-id" },
+            { "DdConfig:MaskinportenSettings:Environment", "test" },
+            { "DdConfig:MaskinportenSettings:EncodedJwk", "test-jwk" },
+            { "DdConfig:CorrespondenceSettings:CorrespondenceSettings", "test-resource,test-sender" },
+            { "DdConfig:CorrespondenceSettings:UseAltinnTestServers", "true" },
+            { "DdConfig:CorrespondenceSettings:CountryCode", "0192" }
+        };
+
+        baseSettings.Remove($"DdConfig:MaskinportenSettings:{missingKey}");
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(baseSettings)
+            .Build();
+
+        // Act
+        Action act = () => services.AddDdMessagingService<SettingsJwkClientDefinition>(
+            configuration.GetSection("DdConfig:MaskinportenSettings"),
+            configuration.GetSection("DdConfig:CorrespondenceSettings"));
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage($"*{expectedMessage}*");
+    }
+
+    private static MaskinportenSettings BindMaskinportenSettings(IConfigurationSection section)
+    {
+        var method = typeof(ServiceCollectionExtensions)
+            .GetMethod("BindMaskinportenSettings", BindingFlags.Static | BindingFlags.NonPublic);
+
+        method.Should().NotBeNull("the binding helper should exist");
+
+        return (MaskinportenSettings)method!.Invoke(null, new object[] { section })!;
     }
 }

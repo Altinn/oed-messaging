@@ -3,7 +3,8 @@
     "MaskinportenSettings": {
       "ClientId": "YOUR_CLIENT_ID_HERE",
       "Environment": "test",
-      "EncodedJwk": "YOUR_BASE64_ENCODED_JWK_HERE"
+      "EncodedJwk": "YOUR_BASE64_ENCODED_JWK_HERE",
+      "EnableDebugLogging": false
     },
     "CorrespondenceSettings": {
       "CorrespondenceSettings": "oed-correspondence,digdir",
@@ -78,4 +79,4 @@
  * - Scope is hardcoded: "altinn:serviceowner altinn:correspondence.write"
  * - No need to configure Authority, TokenEndpoint, or other advanced settings
  * - The library handles all authentication automatically
- * - EnableDebugLogging can be set in code when calling AddDdMessagingService
+* - EnableDebugLogging can be toggled via configuration for temporary troubleshooting
