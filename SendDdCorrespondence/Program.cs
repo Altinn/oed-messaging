@@ -1,48 +1,25 @@
 ﻿using System.Text.Json;
 using Altinn.ApiClients.Maskinporten.Services;
-using Altinn.ApiClients.Maskinporten.Interfaces;
-// using Altinn.Oed.Correspondence.Authentication;
-// using Altinn.Oed.Correspondence.Models;
-// using Altinn.Oed.Correspondence.Models.Interfaces;
-// using Altinn.Oed.Correspondence.Services.Interfaces;
-// using Altinn.Oed.Correspondence.Extensions;
-using Altinn.Dd.Correspondence.Authentication;
 using Altinn.Dd.Correspondence.Models;
-using Altinn.Dd.Correspondence.Models.Interfaces;
 using Altinn.Dd.Correspondence.Services.Interfaces;
 using Altinn.Dd.Correspondence.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using SendDdCorrespondence.Authentication;
 
 var configuration = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json")
     .AddUserSecrets<Program>()
     .Build();
 
-var settings = configuration.GetSection("Settings").Get<Settings>()!;
-
-// Create token provider directly
-var httpClient = new HttpClient();
-var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-var maskinportenLogger = loggerFactory.CreateLogger<MaskinportenService>();
-var memoryCache = new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
-var tokenCacheProvider = new MemoryTokenCacheProvider(memoryCache);
-var maskinportenService = new MaskinportenService(httpClient, maskinportenLogger, tokenCacheProvider);
-var adapterLogger = loggerFactory.CreateLogger<MaskinportenTokenAdapter>();
-var accessTokenProvider = new MaskinportenTokenAdapter(maskinportenService, configuration.GetSection("MaskinportenSettings"), adapterLogger);
-
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices(services =>
     {
-        services.AddHttpClient<IMaskinportenService, MaskinportenService>();
-        services.AddMemoryCache();
-        services.AddSingleton<ITokenCacheProvider, MemoryTokenCacheProvider>();
-        services.AddSingleton(accessTokenProvider);
+        // Register DD Messaging Service with Maskinporten authentication
+        services.AddDdMessagingService<SettingsJwkClientDefinition>(
+            configuration.GetSection("DdConfig:MaskinportenSettings"),
+            configuration.GetSection("DdConfig:CorrespondenceSettings"));
     })
-    .AddDdCorrespondence(settings, accessTokenProvider)
     .Build();
 
 var messagingService = host.Services.GetRequiredService<IDdMessagingService>();

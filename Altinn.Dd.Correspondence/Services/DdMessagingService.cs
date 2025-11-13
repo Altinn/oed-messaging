@@ -122,7 +122,7 @@ public class DdMessagingService : IDdMessagingService
                 IdempotentKey = idempotencyKey
             };
 
-            // Send the correspondence using Altinn 3 API
+            // Send the correspondence using Altinn 3 API with retry policy
             var result = await _correspondenceClient.CorrespondencePOSTAsync(correspondenceRequest);
 
             _logger.LogInformation("Successfully sent correspondence to recipient {Recipient}", correspondence.Recipient);

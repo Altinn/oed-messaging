@@ -1,75 +1,134 @@
-using Altinn.Dd.Correspondence.Authentication;
+using System;
+using System.Net;
+using System.Net.Http;
+using System.Net.Sockets;
+using System.Threading;
+using System.Threading.Tasks;
+using Altinn.ApiClients.Maskinporten.Config;
+using Altinn.ApiClients.Maskinporten.Extensions;
+using Altinn.ApiClients.Maskinporten.Interfaces;
+using Altinn.Dd.Correspondence.Models;
 using Altinn.Dd.Correspondence.Models.Interfaces;
-using Altinn.Dd.Correspondence.Services;
 using Altinn.Dd.Correspondence.Services.Interfaces;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http;
-using Microsoft.Extensions.Logging;
 using Polly;
-using Polly.Extensions.Http;
 
 namespace Altinn.Dd.Correspondence.Extensions;
 
-public static class HostBuilderExtensions
+public static class ServiceCollectionExtensions
 {
-    /// <summary>
-    /// Creates a retry policy for HTTP requests to handle transient failures
-    /// </summary>
-    /// <returns>A retry policy</returns>
-    private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
-    {
-        return HttpPolicyExtensions
-            .HandleTransientHttpError()
-            .OrResult(msg => !msg.IsSuccessStatusCode)
-            .WaitAndRetryAsync(
-                retryCount: 3,
-                sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)), // Exponential backoff
-                onRetry: (outcome, timespan, retryCount, context) =>
-                {
-                    // Log retry attempts (this will be handled by the logger in the service)
-                });
-    }
+    private const string CorrespondenceScope = "altinn:serviceowner altinn:correspondence.write";
+    private const int RetryCount = 3;
 
     /// <summary>
-    /// Adds DD Correspondence services to the host builder.
+    /// Adds DD Messaging Service with Maskinporten authentication to the service collection.
+    /// This method follows the Altinn 3 pattern for registering HttpClients with Maskinporten.
     /// </summary>
-    /// <param name="hostBuilder">The host builder to configure</param>
-    /// <param name="settings">The correspondence settings</param>
-    /// <param name="accessTokenProvider">The token provider for authentication</param>
-    /// <returns>The configured host builder</returns>
-    public static IHostBuilder AddDdCorrespondence(
-        this IHostBuilder hostBuilder, 
-        IDdNotificationSettings settings,
-        IAccessTokenProvider accessTokenProvider)
+    /// <typeparam name="TClientDefinition">The Maskinporten client definition type (e.g., SettingsJwkClientDefinition)</typeparam>
+    /// <param name="services">The service collection</param>
+    /// <param name="maskinportenSettings">Configuration section containing Maskinporten settings (must include ClientId)</param>
+    /// <param name="correspondenceSettings">Configuration section containing correspondence settings</param>
+    /// <returns>The service collection for chaining</returns>
+    public static IServiceCollection AddDdMessagingService<TClientDefinition>(
+        this IServiceCollection services,
+        IConfigurationSection maskinportenSettings,
+        IConfigurationSection correspondenceSettings)
+        where TClientDefinition : class, IClientDefinition
     {
-        hostBuilder.ConfigureServices(serviceCollection =>
+        // Bind and register correspondence settings
+        var settings = correspondenceSettings.Get<Settings>();
+        if (settings == null)
         {
-            // Register the token provider
-            serviceCollection.AddSingleton(accessTokenProvider);
-            
-            // Register the authentication handler
-            serviceCollection.AddTransient<BearerTokenHandler>();
-            
-            // Register HttpClient with authentication handler and retry policy
-            serviceCollection
-                .AddHttpClient<IDdMessagingService, DdMessagingService>()
-                .AddHttpMessageHandler<BearerTokenHandler>()
-                .AddPolicyHandler(GetRetryPolicy());
-            
-            // Override the registration to make it singleton
-            serviceCollection.AddSingleton<IDdMessagingService>(sp =>
-            {
-                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
-                var httpClient = httpClientFactory.CreateClient(nameof(IDdMessagingService));
-                var logger = sp.GetRequiredService<ILogger<Services.DdMessagingService>>();
-                return new Services.DdMessagingService(httpClient, settings, logger);
-            });
-            
-            // Register settings
-            serviceCollection.AddSingleton(_ => settings);
-        });
+            var configPath = correspondenceSettings.Path ?? "unknown";
+            throw new ArgumentException(
+                $"Correspondence settings are required but could not be bound from configuration section '{configPath}'. " +
+                $"Ensure the section exists and contains valid settings.", 
+                nameof(correspondenceSettings));
+        }
+        
+        services.AddSingleton<IDdNotificationSettings>(settings);
 
-        return hostBuilder;
+        var maskinportenOptions = BindMaskinportenSettings(maskinportenSettings);
+
+        // Register the HttpClient with Maskinporten authentication and Polly-based resiliency
+        services.AddMaskinportenHttpClient<TClientDefinition, IDdMessagingService, Services.DdMessagingService>(maskinportenOptions)
+            .AddHttpMessageHandler(() => new AsyncPolicyDelegatingHandler(CreateRetryPolicy()));
+        
+        return services;
     }
+
+    private static MaskinportenSettings BindMaskinportenSettings(IConfigurationSection configurationSection)
+    {
+        if (configurationSection == null)
+        {
+            throw new ArgumentNullException(nameof(configurationSection), "Maskinporten settings configuration section cannot be null.");
+        }
+
+        var options = configurationSection.Get<MaskinportenSettings>();
+        if (options == null)
+        {
+            throw new ArgumentException(
+                $"Maskinporten settings are required but could not be bound from configuration section '{configurationSection.Path ?? "unknown"}'.",
+                nameof(configurationSection));
+        }
+
+        if (string.IsNullOrWhiteSpace(options.ClientId))
+        {
+            throw new InvalidOperationException("Maskinporten ClientId must be provided.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.EncodedJwk))
+        {
+            throw new InvalidOperationException("Maskinporten EncodedJwk must be provided.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.Environment))
+        {
+            throw new InvalidOperationException("Maskinporten Environment must be provided.");
+        }
+
+        options.Scope = CorrespondenceScope;
+
+        return options;
+    }
+
+    private static IAsyncPolicy<HttpResponseMessage> CreateRetryPolicy()
+    {
+        return Policy<HttpResponseMessage>
+            .Handle<HttpRequestException>()
+            .Or<TaskCanceledException>()
+            .Or<SocketException>()
+            .OrResult(response =>
+                response.StatusCode == HttpStatusCode.RequestTimeout ||
+                response.StatusCode == HttpStatusCode.TooManyRequests ||
+                (int)response.StatusCode >= 500)
+            .WaitAndRetryAsync(
+                RetryCount,
+                retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
+    }
+
+    private sealed class AsyncPolicyDelegatingHandler : DelegatingHandler
+    {
+        private readonly IAsyncPolicy<HttpResponseMessage> _policy;
+
+        public AsyncPolicyDelegatingHandler(IAsyncPolicy<HttpResponseMessage> policy)
+        {
+            _policy = policy ?? throw new ArgumentNullException(nameof(policy));
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (request == null)
+            {
+                throw new ArgumentNullException(nameof(request));
+            }
+
+            return _policy.ExecuteAsync(
+                (ct) => base.SendAsync(request, ct),
+                cancellationToken);
+        }
+    }
+
 }
