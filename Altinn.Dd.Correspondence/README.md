@@ -28,7 +28,8 @@ Add to your `appsettings.json`:
     "CorrespondenceSettings": {
       "CorrespondenceSettings": "your-resource-id,your-sender-org",
       "UseAltinnTestServers": true,
-      "CountryCode": "0192"
+      "CountryCode": "0192",
+      "IgnoreReservation": true
     }
   }
 }
@@ -42,6 +43,7 @@ Add to your `appsettings.json`:
 - `CorrespondenceSettings`: Format is "resourceId,senderOrg"
 - `UseAltinnTestServers`: Set to `true` for TT02 test environment, `false` for production
 - `CountryCode`: Country code for organization numbers (default: "0192" for Norway)
+- `IgnoreReservation`: Set to `true` to override KRR reservation checks (default: `true`)
 
 **Note**: The scope `"altinn:serviceowner altinn:correspondence.write"` is hardcoded in the library - you don't need to specify it.
 
@@ -300,7 +302,8 @@ builder.Host.AddDdCorrespondence(settings, builder.Services.BuildServiceProvider
   "AltinnMessagingSettings": {
     "CorrespondenceSettings": "your-resource-id,your-sender",
     "UseAltinnTestServers": true,
-    "CountryCode": "0192"
+    "CountryCode": "0192",
+    "IgnoreReservation": true
   },
   "DdConfig": {
     "MaskinportenSettings": {

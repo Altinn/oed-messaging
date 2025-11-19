@@ -19,4 +19,9 @@ public interface IDdNotificationSettings
     /// Gets or sets the country code for organization number formatting (default: "0192" for Norway)
     /// </summary>
     public string CountryCode { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether Altinn should ignore reservation flag (KRR) when sending correspondences
+    /// </summary>
+    public bool IgnoreReservation { get; set; }
 }

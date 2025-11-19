@@ -35,6 +35,11 @@ public class DdMessagingService : IDdMessagingService
     /// </summary>
     public string CountryCode { get; set; }
 
+    /// <summary>
+    /// Gets or sets whether the correspondence should ignore reservation flags (KRR).
+    /// </summary>
+    public bool IgnoreReservation { get; set; }
+
     private static int Rand => Random.Shared.Next(100000, 999999);
 
     private readonly AltinnCorrespondenceClient _correspondenceClient;
@@ -70,8 +75,9 @@ public class DdMessagingService : IDdMessagingService
         ResourceId = resourceId;
         Sender = sender;
         CountryCode = settings.CountryCode;
+        IgnoreReservation = settings.IgnoreReservation;
 
-        // Set base URL based on test server setting
+        // remove this and send them as a parameter via config!!!!!!!!
         if (settings.UseAltinnTestServers)
         {
             _correspondenceClient.BaseUrl = "https://platform.tt02.altinn.no";
@@ -101,6 +107,7 @@ public class DdMessagingService : IDdMessagingService
             {
                 Correspondence = new BaseCorrespondenceExt
                 {
+                    IgnoreReservation = IgnoreReservation,
                     ResourceId = ResourceId,
                     SendersReference = $"{SenderReferencePrefix}{Rand}",
                     MessageSender = correspondence.Sender,

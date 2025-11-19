@@ -23,6 +23,12 @@ public class SettingsBuilder
         return this;
     }
 
+    public SettingsBuilder WithIgnoreReservation(bool ignoreReservation)
+    {
+        _settings.IgnoreReservation = ignoreReservation;
+        return this;
+    }
+
     public SettingsBuilder WithValidDefaults()
     {
         return WithCorrespondenceSettings("test-resource-id,test-sender-org")

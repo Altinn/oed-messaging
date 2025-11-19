@@ -52,6 +52,22 @@ public class DdMessagingServiceTests
     }
 
     [Fact]
+    public void Constructor_WithIgnoreReservationConfigured_SetsFlagAccordingly()
+    {
+        // Arrange
+        var settings = SettingsBuilder.Create()
+            .WithCorrespondenceSettings("test-resource,test-sender")
+            .WithIgnoreReservation(false)
+            .Build();
+
+        // Act
+        var service = new DdMessagingService(_httpClient, settings, _mockLogger.Object);
+
+        // Assert
+        service.IgnoreReservation.Should().BeFalse();
+    }
+
+    [Fact]
     public void Constructor_WithTestServerSettings_SetsCorrectBaseUrl()
     {
         // Arrange

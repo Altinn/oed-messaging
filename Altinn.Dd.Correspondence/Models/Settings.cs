@@ -26,4 +26,9 @@ public class Settings : IDdNotificationSettings
     [Required(ErrorMessage = "CountryCode is required")]
     [StringLength(4, MinimumLength = 3, ErrorMessage = "CountryCode must be between 3 and 4 characters")]
     public string CountryCode { get; set; } = "0192";
+
+    /// <summary>
+    /// Gets or sets whether Altinn should ignore reservation flags (KRR) when sending correspondences
+    /// </summary>
+    public bool IgnoreReservation { get; set; } = true;
 }
