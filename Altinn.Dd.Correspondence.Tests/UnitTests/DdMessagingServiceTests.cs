@@ -40,7 +40,7 @@ public class DdMessagingServiceTests
         // Arrange
         var settings = SettingsBuilder.Create()
             .WithCorrespondenceSettings("test-resource,test-sender")
-            .WithUseAltinnTestServers(true)
+            .WithBaseUrl("https://platform.tt02.altinn.no")
             .Build();
 
         // Act
@@ -73,7 +73,7 @@ public class DdMessagingServiceTests
         // Arrange
         var settings = SettingsBuilder.Create()
             .WithCorrespondenceSettings("test-resource,test-sender")
-            .WithUseAltinnTestServers(true)
+            .WithBaseUrl("https://platform.tt02.altinn.no")
             .Build();
         var service = new DdMessagingService(_httpClient, settings, _mockLogger.Object);
 
@@ -90,7 +90,7 @@ public class DdMessagingServiceTests
         // Arrange
         var settings = SettingsBuilder.Create()
             .WithCorrespondenceSettings("prod-resource,prod-sender")
-            .WithUseAltinnTestServers(false)
+            .WithBaseUrl("https://platform.altinn.no")
             .Build();
         var service = new DdMessagingService(_httpClient, settings, _mockLogger.Object);
 

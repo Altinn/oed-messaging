@@ -27,7 +27,7 @@ Add to your `appsettings.json`:
     },
     "CorrespondenceSettings": {
       "CorrespondenceSettings": "your-resource-id,your-sender-org",
-      "UseAltinnTestServers": true,
+      "BaseUrl": "https://platform.tt02.altinn.no",
       "CountryCode": "0192",
       "IgnoreReservation": true
     }
@@ -41,7 +41,9 @@ Add to your `appsettings.json`:
 - `EncodedJwk`: Base64-encoded JWK from Azure Key Vault
 - `EnableDebugLogging`: Optional flag to emit verbose Maskinporten diagnostics (only enable temporarily)
 - `CorrespondenceSettings`: Format is "resourceId,senderOrg"
-- `UseAltinnTestServers`: Set to `true` for TT02 test environment, `false` for production
+- `BaseUrl`: Base URL for the Altinn platform API (required)
+  - Test environment: `"https://platform.tt02.altinn.no"`
+  - Production environment: `"https://platform.altinn.no"`
 - `CountryCode`: Country code for organization numbers (default: "0192" for Norway)
 - `IgnoreReservation`: Set to `true` to override KRR reservation checks (default: `true`)
 
@@ -301,7 +303,7 @@ builder.Host.AddDdCorrespondence(settings, builder.Services.BuildServiceProvider
 {
   "AltinnMessagingSettings": {
     "CorrespondenceSettings": "your-resource-id,your-sender",
-    "UseAltinnTestServers": true,
+    "BaseUrl": "https://platform.tt02.altinn.no",
     "CountryCode": "0192",
     "IgnoreReservation": true
   },

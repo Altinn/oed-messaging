@@ -8,7 +8,7 @@
     },
     "CorrespondenceSettings": {
       "CorrespondenceSettings": "oed-correspondence,digdir",
-      "UseAltinnTestServers": true,
+      "BaseUrl": "https://platform.tt02.altinn.no",
       "CountryCode": "0192"
     }
   }
@@ -35,7 +35,7 @@
  * 3. FOR PRODUCTION
  *    Change these settings:
  *    - Environment: "prod" (instead of "test")
- *    - UseAltinnTestServers: false
+ *    - BaseUrl: "https://platform.altinn.no" (instead of "https://platform.tt02.altinn.no")
  * 
  * 4. USE USER SECRETS FOR DEVELOPMENT
  *    Instead of putting credentials in this file, use user secrets:
@@ -56,9 +56,9 @@
  *     - resourceId: Your Altinn resource ID (created in Altinn Studio)
  *     - senderOrg: Your organization identifier
  *   
- *   UseAltinnTestServers: true|false (REQUIRED)
- *     - true: Use TT02 test environment (platform.tt02.altinn.no)
- *     - false: Use production environment (platform.altinn.no)
+ *   BaseUrl: "https://platform.tt02.altinn.no" or "https://platform.altinn.no" (REQUIRED)
+ *     - Test environment: "https://platform.tt02.altinn.no"
+ *     - Production environment: "https://platform.altinn.no"
  *   
  *   CountryCode: "0192" (OPTIONAL, defaults to "0192" for Norway)
  *     - ISO 6523 ICD code for organization numbers

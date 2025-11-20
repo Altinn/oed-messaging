@@ -17,9 +17,9 @@ public class SettingsBuilder
         return this;
     }
 
-    public SettingsBuilder WithUseAltinnTestServers(bool useTestServers)
+    public SettingsBuilder WithBaseUrl(string baseUrl)
     {
-        _settings.UseAltinnTestServers = useTestServers;
+        _settings.BaseUrl = baseUrl;
         return this;
     }
 
@@ -32,13 +32,13 @@ public class SettingsBuilder
     public SettingsBuilder WithValidDefaults()
     {
         return WithCorrespondenceSettings("test-resource-id,test-sender-org")
-               .WithUseAltinnTestServers(true);
+               .WithBaseUrl("https://platform.tt02.altinn.no");
     }
 
     public SettingsBuilder WithProductionSettings()
     {
         return WithCorrespondenceSettings("prod-resource-id,prod-sender-org")
-               .WithUseAltinnTestServers(false);
+               .WithBaseUrl("https://platform.altinn.no");
     }
 
     public Settings Build() => _settings;

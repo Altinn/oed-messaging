@@ -111,12 +111,12 @@ public class ModelsTests
         // Arrange & Act
         var settings = SettingsBuilder.Create()
             .WithCorrespondenceSettings("test-resource,test-sender")
-            .WithUseAltinnTestServers(true)
+            .WithBaseUrl("https://platform.tt02.altinn.no")
             .Build();
 
         // Assert
         settings.CorrespondenceSettings.Should().Be("test-resource,test-sender");
-        settings.UseAltinnTestServers.Should().BeTrue();
+        settings.BaseUrl.Should().Be("https://platform.tt02.altinn.no");
     }
 
     [Fact]
@@ -129,7 +129,7 @@ public class ModelsTests
 
         // Assert
         settings.CorrespondenceSettings.Should().Be("prod-resource-id,prod-sender-org");
-        settings.UseAltinnTestServers.Should().BeFalse();
+        settings.BaseUrl.Should().Be("https://platform.altinn.no");
     }
 
     [Fact]

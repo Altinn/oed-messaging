@@ -11,9 +11,9 @@ public interface IDdNotificationSettings
     public string CorrespondenceSettings { get; set; }
 
     /// <summary>
-    /// Gets or sets whether to use Altinn test servers (TT02) instead of production
+    /// Gets or sets the base URL for the Altinn platform API (e.g., "https://platform.altinn.no" or "https://platform.tt02.altinn.no")
     /// </summary>
-    public bool UseAltinnTestServers { get; set; }
+    public string BaseUrl { get; set; }
 
     /// <summary>
     /// Gets or sets the country code for organization number formatting (default: "0192" for Norway)

@@ -33,7 +33,7 @@ public class DdMessagingServiceIntegrationTests
         var httpClient = new HttpClient();
         var settings = SettingsBuilder.Create()
             .WithCorrespondenceSettings("test-resource,test-sender")
-            .WithUseAltinnTestServers(true)
+            .WithBaseUrl("https://platform.tt02.altinn.no")
             .Build();
         var mockLogger = new Mock<ILogger<DdMessagingService>>();
 
@@ -53,7 +53,7 @@ public class DdMessagingServiceIntegrationTests
         var httpClient = new HttpClient();
         var settings = SettingsBuilder.Create()
             .WithCorrespondenceSettings("test-resource,test-sender")
-            .WithUseAltinnTestServers(true)
+            .WithBaseUrl("https://platform.tt02.altinn.no")
             .Build();
         var mockLogger = new Mock<ILogger<DdMessagingService>>();
 
@@ -73,7 +73,7 @@ public class DdMessagingServiceIntegrationTests
         var httpClient = new HttpClient();
         var settings = SettingsBuilder.Create()
             .WithCorrespondenceSettings("prod-resource,prod-sender")
-            .WithUseAltinnTestServers(false)
+            .WithBaseUrl("https://platform.altinn.no")
             .Build();
         var mockLogger = new Mock<ILogger<DdMessagingService>>();
 
@@ -153,7 +153,7 @@ public class DdMessagingServiceIntegrationTests
                 { "DdConfig:MaskinportenSettings:Environment", "test" },
                 { "DdConfig:MaskinportenSettings:EncodedJwk", "test-jwk" },
                 { "DdConfig:CorrespondenceSettings:CorrespondenceSettings", "test-resource,test-sender" },
-                { "DdConfig:CorrespondenceSettings:UseAltinnTestServers", "true" },
+                { "DdConfig:CorrespondenceSettings:BaseUrl", "https://platform.tt02.altinn.no" },
                 { "DdConfig:CorrespondenceSettings:CountryCode", "0192" }
             })
             .Build();
@@ -172,7 +172,7 @@ public class DdMessagingServiceIntegrationTests
         var settingsService = serviceProvider.GetService<IDdNotificationSettings>();
         settingsService.Should().NotBeNull();
         settingsService.CorrespondenceSettings.Should().Be("test-resource,test-sender");
-        settingsService.UseAltinnTestServers.Should().BeTrue();
+        settingsService.BaseUrl.Should().Be("https://platform.tt02.altinn.no");
 
         var boundMaskinportenSettings = BindMaskinportenSettings(configuration.GetSection("DdConfig:MaskinportenSettings"));
         boundMaskinportenSettings.Scope.Should().Be("altinn:serviceowner altinn:correspondence.write");
@@ -219,7 +219,7 @@ public class DdMessagingServiceIntegrationTests
                 { "DdConfig:MaskinportenSettings:EncodedJwk", "test-jwk" },
                 { "DdConfig:MaskinportenSettings:EnableDebugLogging", "true" },
                 { "DdConfig:CorrespondenceSettings:CorrespondenceSettings", "test-resource,test-sender" },
-                { "DdConfig:CorrespondenceSettings:UseAltinnTestServers", "true" },
+                { "DdConfig:CorrespondenceSettings:BaseUrl", "https://platform.tt02.altinn.no" },
                 { "DdConfig:CorrespondenceSettings:CountryCode", "0192" }
             })
             .Build();
@@ -250,7 +250,7 @@ public class DdMessagingServiceIntegrationTests
             { "DdConfig:MaskinportenSettings:Environment", "test" },
             { "DdConfig:MaskinportenSettings:EncodedJwk", "test-jwk" },
             { "DdConfig:CorrespondenceSettings:CorrespondenceSettings", "test-resource,test-sender" },
-            { "DdConfig:CorrespondenceSettings:UseAltinnTestServers", "true" },
+            { "DdConfig:CorrespondenceSettings:BaseUrl", "https://platform.tt02.altinn.no" },
             { "DdConfig:CorrespondenceSettings:CountryCode", "0192" }
         };
 

@@ -77,15 +77,7 @@ public class DdMessagingService : IDdMessagingService
         CountryCode = settings.CountryCode;
         IgnoreReservation = settings.IgnoreReservation;
 
-        // remove this and send them as a parameter via config!!!!!!!!
-        if (settings.UseAltinnTestServers)
-        {
-            _correspondenceClient.BaseUrl = "https://platform.tt02.altinn.no";
-        }
-        else
-        {
-            _correspondenceClient.BaseUrl = "https://platform.altinn.no";
-        }
+        _correspondenceClient.BaseUrl = settings.BaseUrl;
     }
 
     /// <inheritdoc />        
