@@ -57,6 +57,7 @@ public class DdMessagingServiceTests
         // Arrange
         var settings = SettingsBuilder.Create()
             .WithCorrespondenceSettings("test-resource,test-sender")
+            .WithBaseUrl("https://platform.tt02.altinn.no")
             .WithIgnoreReservation(false)
             .Build();
 

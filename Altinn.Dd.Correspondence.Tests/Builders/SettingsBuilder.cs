@@ -29,16 +29,17 @@ public class SettingsBuilder
         return this;
     }
 
-    public SettingsBuilder WithValidDefaults()
+    /// <summary>
+    /// Creates settings with valid defaults for testing.
+    /// </summary>
+    /// <param name="correspondenceSettings">Optional correspondence settings in format "resourceId,senderOrg". Defaults to test values if not provided.</param>
+    /// <param name="baseUrl">Optional base URL. Defaults to test environment URL if not provided.</param>
+    public SettingsBuilder WithValidDefaults(
+        string? correspondenceSettings = null,
+        string? baseUrl = null)
     {
-        return WithCorrespondenceSettings("test-resource-id,test-sender-org")
-               .WithBaseUrl("https://platform.tt02.altinn.no");
-    }
-
-    public SettingsBuilder WithProductionSettings()
-    {
-        return WithCorrespondenceSettings("prod-resource-id,prod-sender-org")
-               .WithBaseUrl("https://platform.altinn.no");
+        return WithCorrespondenceSettings(correspondenceSettings ?? "test-resource-id,test-sender-org")
+               .WithBaseUrl(baseUrl ?? "https://platform.tt02.altinn.no");
     }
 
     public Settings Build() => _settings;

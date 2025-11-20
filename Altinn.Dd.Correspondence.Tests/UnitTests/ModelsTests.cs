@@ -124,7 +124,7 @@ public class ModelsTests
     {
         // Arrange & Act
         var settings = SettingsBuilder.Create()
-            .WithProductionSettings()
+            .WithValidDefaults("prod-resource-id,prod-sender-org", "https://platform.altinn.no")
             .Build();
 
         // Assert
