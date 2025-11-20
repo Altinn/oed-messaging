@@ -1,5 +1,4 @@
 ﻿using System.Text.Json;
-using Altinn.ApiClients.Maskinporten.Services;
 using Altinn.Dd.Correspondence.Models;
 using Altinn.Dd.Correspondence.Services.Interfaces;
 using Altinn.Dd.Correspondence.Extensions;
@@ -16,9 +15,8 @@ var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices(services =>
     {
         // Register DD Messaging Service with Maskinporten authentication
-        services.AddDdMessagingService<SettingsJwkClientDefinition>(
-            configuration.GetSection("DdConfig:MaskinportenSettings"),
-            configuration.GetSection("DdConfig:CorrespondenceSettings"));
+        services.AddDdMessagingServiceSettingsJwkClientDefinition(
+            configuration.GetSection("DdConfig"));
     })
     .Build();
 

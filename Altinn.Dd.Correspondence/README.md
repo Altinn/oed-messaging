@@ -53,6 +53,20 @@ Add to your `appsettings.json`:
 
 In your `Program.cs` or `Startup.cs`:
 
+**Recommended (simplified pattern, follows Dialogporten convention):**
+
+```csharp
+using Altinn.Dd.Correspondence.Extensions;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+// In ConfigureServices or builder.Services
+services.AddDdMessagingServiceSettingsJwkClientDefinition(
+    configuration.GetSection("DdConfig"));
+```
+
+**Alternative (generic method for custom client definitions):**
+
 ```csharp
 using Altinn.ApiClients.Maskinporten.Config;
 using Altinn.Dd.Correspondence.Extensions;
@@ -65,7 +79,7 @@ services.AddDdMessagingService<SettingsJwkClientDefinition>(
     configuration.GetSection("DdConfig:CorrespondenceSettings"));
 ```
 
-> `AddDdMessagingService` enforces the required correspondence scope (`altinn:serviceowner altinn:correspondence.write`) and wires up a Maskinporten-enabled `HttpClient` with Polly-based retries. Consumers only need to supply environment-specific credentials. Set `EnableDebugLogging` in configuration when troubleshooting.
+> `AddDdMessagingServiceSettingsJwkClientDefinition` takes a single configuration section (e.g., `"DdConfig"`) and extracts both `MaskinportenSettings` and `CorrespondenceSettings` sub-sections internally. This method enforces the required correspondence scope (`altinn:serviceowner altinn:correspondence.write`) and wires up a Maskinporten-enabled `HttpClient` with Polly-based retries. Consumers only need to supply environment-specific credentials. Set `EnableDebugLogging` in configuration when troubleshooting.
 
 ### 4. Use the Service
 

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Altinn.ApiClients.Maskinporten.Config;
 using Altinn.ApiClients.Maskinporten.Extensions;
 using Altinn.ApiClients.Maskinporten.Interfaces;
+using Altinn.ApiClients.Maskinporten.Services;
 using Altinn.Dd.Correspondence.Models;
 using Altinn.Dd.Correspondence.Models.Interfaces;
 using Altinn.Dd.Correspondence.Services.Interfaces;
@@ -21,6 +22,32 @@ public static class ServiceCollectionExtensions
 {
     private const string CorrespondenceScope = "altinn:serviceowner altinn:correspondence.write";
     private const int RetryCount = 3;
+
+    /// <summary>
+    /// Adds DD Messaging Service with Maskinporten authentication using SettingsJwkClientDefinition.
+    /// This method takes a single configuration section (e.g., "DdConfig") and extracts both
+    /// MaskinportenSettings and CorrespondenceSettings sub-sections internally.
+    /// This follows the Dialogporten pattern for simpler configuration.
+    /// </summary>
+    /// <param name="services">The service collection</param>
+    /// <param name="configurationSection">Configuration section containing both MaskinportenSettings and CorrespondenceSettings sub-sections</param>
+    /// <returns>The service collection for chaining</returns>
+    public static IServiceCollection AddDdMessagingServiceSettingsJwkClientDefinition(
+        this IServiceCollection services,
+        IConfigurationSection configurationSection)
+    {
+        if (configurationSection == null)
+        {
+            throw new ArgumentNullException(nameof(configurationSection), "Configuration section cannot be null.");
+        }
+
+        var maskinportenSettings = configurationSection.GetSection("MaskinportenSettings");
+        var correspondenceSettings = configurationSection.GetSection("CorrespondenceSettings");
+
+        return services.AddDdMessagingService<SettingsJwkClientDefinition>(
+            maskinportenSettings,
+            correspondenceSettings);
+    }
 
     /// <summary>
     /// Adds DD Messaging Service with Maskinporten authentication to the service collection.
