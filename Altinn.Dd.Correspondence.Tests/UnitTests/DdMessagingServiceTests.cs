@@ -3,9 +3,9 @@ using System.Net.Http;
 using Altinn.Dd.Correspondence.Exceptions;
 using Altinn.Dd.Correspondence.ExternalServices.Correspondence;
 using Altinn.Dd.Correspondence.Models;
-using Altinn.Dd.Correspondence.Models.Interfaces;
 using Altinn.Dd.Correspondence.Services;
 using Altinn.Dd.Correspondence.Tests.Builders;
+using Microsoft.Extensions.Options;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -21,7 +21,7 @@ public class DdMessagingServiceTests
 {
     private readonly Mock<HttpMessageHandler> _mockHttpMessageHandler;
     private readonly HttpClient _httpClient;
-    private readonly IDdNotificationSettings _settings;
+    private readonly CorrespondenceSettings _settings;
     private readonly Mock<ILogger<DdMessagingService>> _mockLogger;
     private readonly DdMessagingService _service;
 
@@ -29,22 +29,21 @@ public class DdMessagingServiceTests
     {
         _mockHttpMessageHandler = new Mock<HttpMessageHandler>();
         _httpClient = new HttpClient(_mockHttpMessageHandler.Object);
-        _settings = SettingsBuilder.Create().WithValidDefaults().Build();
+        _settings = CorrespondenceSettingsBuilder.Create().WithValidDefaults().Build();
         _mockLogger = new Mock<ILogger<DdMessagingService>>();
-        _service = new DdMessagingService(_httpClient, _settings, _mockLogger.Object);
+        _service = new DdMessagingService(_httpClient, Options.Create(_settings), _mockLogger.Object);
     }
 
     [Fact]
     public void Constructor_WithValidSettings_SetsPropertiesCorrectly()
     {
         // Arrange
-        var settings = SettingsBuilder.Create()
-            .WithCorrespondenceSettings("test-resource,test-sender")
-            .WithBaseUrl("https://platform.tt02.altinn.no")
+        var settings = CorrespondenceSettingsBuilder.Create()
+            .WithValidDefaults("test-resource,test-sender", "https://platform.tt02.altinn.no")
             .Build();
 
         // Act
-        var service = new DdMessagingService(_httpClient, settings, _mockLogger.Object);
+        var service = new DdMessagingService(_httpClient, Options.Create(settings), _mockLogger.Object);
 
         // Assert
         service.ResourceId.Should().Be("test-resource");
@@ -55,14 +54,13 @@ public class DdMessagingServiceTests
     public void Constructor_WithIgnoreReservationConfigured_SetsFlagAccordingly()
     {
         // Arrange
-        var settings = SettingsBuilder.Create()
-            .WithCorrespondenceSettings("test-resource,test-sender")
-            .WithBaseUrl("https://platform.tt02.altinn.no")
+        var settings = CorrespondenceSettingsBuilder.Create()
+            .WithValidDefaults()
             .WithIgnoreReservation(false)
             .Build();
 
         // Act
-        var service = new DdMessagingService(_httpClient, settings, _mockLogger.Object);
+        var service = new DdMessagingService(_httpClient, Options.Create(settings), _mockLogger.Object);
 
         // Assert
         service.IgnoreReservation.Should().BeFalse();
@@ -72,11 +70,10 @@ public class DdMessagingServiceTests
     public void Constructor_WithTestServerSettings_SetsCorrectBaseUrl()
     {
         // Arrange
-        var settings = SettingsBuilder.Create()
-            .WithCorrespondenceSettings("test-resource,test-sender")
-            .WithBaseUrl("https://platform.tt02.altinn.no")
+        var settings = CorrespondenceSettingsBuilder.Create()
+            .WithValidDefaults("test-resource,test-sender", "https://platform.tt02.altinn.no")
             .Build();
-        var service = new DdMessagingService(_httpClient, settings, _mockLogger.Object);
+        var service = new DdMessagingService(_httpClient, Options.Create(settings), _mockLogger.Object);
 
         // Act & Assert
         // The base URL is set internally in the AltinnCorrespondenceClient
@@ -89,11 +86,10 @@ public class DdMessagingServiceTests
     public void Constructor_WithProductionServerSettings_SetsCorrectBaseUrl()
     {
         // Arrange
-        var settings = SettingsBuilder.Create()
-            .WithCorrespondenceSettings("prod-resource,prod-sender")
-            .WithBaseUrl("https://platform.altinn.no")
+        var settings = CorrespondenceSettingsBuilder.Create()
+            .WithValidDefaults("prod-resource,prod-sender", "https://platform.altinn.no")
             .Build();
-        var service = new DdMessagingService(_httpClient, settings, _mockLogger.Object);
+        var service = new DdMessagingService(_httpClient, Options.Create(settings), _mockLogger.Object);
 
         // Act & Assert
         service.Should().NotBeNull();
