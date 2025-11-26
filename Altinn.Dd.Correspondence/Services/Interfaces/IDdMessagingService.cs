@@ -1,3 +1,4 @@
+using Altinn.Dd.Correspondence.Common.Exceptions;
 using Altinn.Dd.Correspondence.Infrastructure;
 using Altinn.Dd.Correspondence.Models;
 
