@@ -1,4 +1,4 @@
-using Altinn.Dd.Correspondence.ExternalServices.Correspondence;
+using Altinn.Dd.Correspondence.Infrastructure;
 using FluentAssertions;
 using Xunit;
 

@@ -1,9 +1,9 @@
-namespace Altinn.Dd.Correspondence.Exceptions;
+namespace Altinn.Dd.Correspondence.Common.Exceptions;
 
 /// <summary>
 /// Exception thrown when errors occur in the Altinn 3 Correspondence service
 /// </summary>
-public class CorrespondenceServiceException : Exception
+public sealed class CorrespondenceServiceException : Exception
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="CorrespondenceServiceException"/> class with a specified error message
@@ -18,3 +18,4 @@ public class CorrespondenceServiceException : Exception
     /// <param name="innerException">The exception that is the cause of the current exception</param>
     public CorrespondenceServiceException(string message, Exception innerException) : base(message, innerException) { }
 }
+

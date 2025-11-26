@@ -1,6 +1,6 @@
 using System.Net.Http;
-using Altinn.Dd.Correspondence.Exceptions;
-using Altinn.Dd.Correspondence.ExternalServices.Correspondence;
+using Altinn.Dd.Correspondence.Common.Exceptions;
+using Altinn.Dd.Correspondence.Infrastructure;
 using Altinn.Dd.Correspondence.Models;
 using Altinn.Dd.Correspondence.Services.Interfaces;
 using Microsoft.Extensions.Logging;

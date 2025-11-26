@@ -6,7 +6,7 @@ namespace Altinn.Dd.Correspondence.Models;
 /// <summary>
 /// Settings for Altinn DD Correspondence client, following Dialogporten pattern
 /// </summary>
-public class CorrespondenceSettings
+public sealed class CorrespondenceSettings
 {
     /// <summary>
     /// Gets or sets the base URI for the Altinn platform API (e.g., "https://platform.altinn.no" or "https://platform.tt02.altinn.no")

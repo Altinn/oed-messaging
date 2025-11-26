@@ -1,4 +1,4 @@
-using Altinn.Dd.Correspondence.Exceptions;
+using Altinn.Dd.Correspondence.Common.Exceptions;
 using FluentAssertions;
 using Xunit;
 
