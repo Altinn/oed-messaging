@@ -15,7 +15,25 @@ dotnet add package Altinn.ApiClients.Maskinporten
 
 ### 2. Configure Settings
 
-Add to your `appsettings.json`:
+**New Dialogporten-style configuration (recommended):**
+
+```json
+{
+  "CorrespondenceSettings": {
+    "BaseUri": "https://platform.tt02.altinn.no",
+    "ResourceSettings": "your-resource-id,your-sender-org",
+    "CountryCode": "0192",
+    "IgnoreReservation": true,
+    "Maskinporten": {
+      "ClientId": "your-client-id",
+      "Environment": "test",
+      "EncodedJwk": "your-base64-encoded-jwk"
+    }
+  }
+}
+```
+
+**Legacy configuration (deprecated):**
 
 ```json
 {
@@ -27,21 +45,25 @@ Add to your `appsettings.json`:
     },
     "CorrespondenceSettings": {
       "CorrespondenceSettings": "your-resource-id,your-sender-org",
-      "UseAltinnTestServers": true,
-      "CountryCode": "0192"
+      "BaseUrl": "https://platform.tt02.altinn.no",
+      "CountryCode": "0192",
+      "IgnoreReservation": true
     }
   }
 }
 ```
 
 **Configuration Details**:
-- `ClientId`: Your Maskinporten client ID (required)
-- `Environment`: Either "test" or "prod" for Maskinporten environment
-- `EncodedJwk`: Base64-encoded JWK from Azure Key Vault
-- `EnableDebugLogging`: Optional flag to emit verbose Maskinporten diagnostics (only enable temporarily)
-- `CorrespondenceSettings`: Format is "resourceId,senderOrg"
-- `UseAltinnTestServers`: Set to `true` for TT02 test environment, `false` for production
+- `BaseUri`: Base URI for the Altinn platform API (required)
+  - Test environment: `"https://platform.tt02.altinn.no"`
+  - Production environment: `"https://platform.altinn.no"`
+- `ResourceSettings`: Format is "resourceId,senderOrg" (required)
 - `CountryCode`: Country code for organization numbers (default: "0192" for Norway)
+- `IgnoreReservation`: Set to `true` to override KRR reservation checks (default: `true`)
+- `Maskinporten.ClientId`: Your Maskinporten client ID (required)
+- `Maskinporten.Environment`: Either "test" or "prod" for Maskinporten environment
+- `Maskinporten.EncodedJwk`: Base64-encoded JWK from Azure Key Vault
+- `Maskinporten.EnableDebugLogging`: Optional flag to emit verbose Maskinporten diagnostics (only enable temporarily)
 
 **Note**: The scope `"altinn:serviceowner altinn:correspondence.write"` is hardcoded in the library - you don't need to specify it.
 
@@ -49,19 +71,40 @@ Add to your `appsettings.json`:
 
 In your `Program.cs` or `Startup.cs`:
 
+**Recommended (Dialogporten-style pattern):**
+
 ```csharp
-using Altinn.ApiClients.Maskinporten.Config;
 using Altinn.Dd.Correspondence.Extensions;
+using Altinn.Dd.Correspondence.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-// In ConfigureServices or builder.Services
-services.AddDdMessagingService<SettingsJwkClientDefinition>(
-    configuration.GetSection("DdConfig:MaskinportenSettings"),
-    configuration.GetSection("DdConfig:CorrespondenceSettings"));
+// Method 1: Using settings object from configuration
+var correspondenceSettings = configuration.GetSection("CorrespondenceSettings").Get<CorrespondenceSettings>()!;
+services.AddCorrespondenceClient(correspondenceSettings);
+
+// Method 2: Using action-based configuration (alternative)
+services.AddCorrespondenceClient(x =>
+{
+    x.BaseUri = "https://platform.tt02.altinn.no";
+    x.ResourceSettings = "oed-correspondence,digdir";
+    x.CountryCode = "0192";
+    x.IgnoreReservation = true;
+    x.Maskinporten.ClientId = "your-client-id";
+    x.Maskinporten.Environment = "test";
+    x.Maskinporten.EncodedJwk = "your-base64-encoded-jwk";
+});
 ```
 
-> `AddDdMessagingService` enforces the required correspondence scope (`altinn:serviceowner altinn:correspondence.write`) and wires up a Maskinporten-enabled `HttpClient` with Polly-based retries. Consumers only need to supply environment-specific credentials. Set `EnableDebugLogging` in configuration when troubleshooting.
+**Legacy (deprecated):**
+
+```csharp
+// DEPRECATED: Will be removed in future version
+services.AddDdMessagingServiceSettingsJwkClientDefinition(
+    configuration.GetSection("DdConfig"));
+```
+
+> `AddCorrespondenceClient` follows the **Dialogporten pattern** used by other Altinn libraries. It supports both settings object and action-based configuration, automatically handles Maskinporten authentication, enforces the required correspondence scope (`altinn:serviceowner altinn:correspondence.write`), and includes Polly-based retry policies.
 
 ### 4. Use the Service
 
@@ -299,8 +342,9 @@ builder.Host.AddDdCorrespondence(settings, builder.Services.BuildServiceProvider
 {
   "AltinnMessagingSettings": {
     "CorrespondenceSettings": "your-resource-id,your-sender",
-    "UseAltinnTestServers": true,
-    "CountryCode": "0192"
+    "BaseUrl": "https://platform.tt02.altinn.no",
+    "CountryCode": "0192",
+    "IgnoreReservation": true
   },
   "DdConfig": {
     "MaskinportenSettings": {

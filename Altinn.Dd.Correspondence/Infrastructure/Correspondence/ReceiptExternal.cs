@@ -1,4 +1,4 @@
-namespace Altinn.Dd.Correspondence.ExternalServices.Correspondence;
+namespace Altinn.Dd.Correspondence.Infrastructure;
 
 /// <summary>
 /// Receipt response from Altinn correspondence service - compatible with Altinn 2 interface

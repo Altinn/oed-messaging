@@ -1,10 +1,10 @@
 using System.Net.Http;
-using Altinn.Dd.Correspondence.Exceptions;
-using Altinn.Dd.Correspondence.ExternalServices.Correspondence;
+using Altinn.Dd.Correspondence.Common.Exceptions;
+using Altinn.Dd.Correspondence.Infrastructure;
 using Altinn.Dd.Correspondence.Models;
-using Altinn.Dd.Correspondence.Models.Interfaces;
 using Altinn.Dd.Correspondence.Services.Interfaces;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.ComponentModel.DataAnnotations;
 
 namespace Altinn.Dd.Correspondence.Services;
@@ -35,16 +35,23 @@ public class DdMessagingService : IDdMessagingService
     /// </summary>
     public string CountryCode { get; set; }
 
+    /// <summary>
+    /// Gets or sets whether the correspondence should ignore reservation flags (KRR).
+    /// </summary>
+    public bool IgnoreReservation { get; set; }
+
     private static int Rand => Random.Shared.Next(100000, 999999);
 
     private readonly AltinnCorrespondenceClient _correspondenceClient;
     private readonly ILogger<DdMessagingService> _logger;
 
-    public DdMessagingService(HttpClient httpClient, IDdNotificationSettings settings, ILogger<DdMessagingService> logger)
+    public DdMessagingService(HttpClient httpClient, IOptions<CorrespondenceSettings> options, ILogger<DdMessagingService> logger)
     {
         ArgumentNullException.ThrowIfNull(httpClient);
-        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(options?.Value);
         ArgumentNullException.ThrowIfNull(logger);
+        
+        var settings = options.Value;
         
         // Validate settings using data annotations
         var validationContext = new ValidationContext(settings);
@@ -52,34 +59,27 @@ public class DdMessagingService : IDdMessagingService
         if (!Validator.TryValidateObject(settings, validationContext, validationResults, true))
         {
             var errorMessages = string.Join("; ", validationResults.Select(r => r.ErrorMessage));
-            throw new ArgumentException($"Settings validation failed: {errorMessages}", nameof(settings));
+            throw new ArgumentException($"Settings validation failed: {errorMessages}", nameof(options));
         }
         
         _correspondenceClient = new AltinnCorrespondenceClient(httpClient);
         _logger = logger;
 
-        var correspondenceSettings = settings.CorrespondenceSettings.Split(',');
-        if (correspondenceSettings.Length < 2)
+        var resourceSettings = settings.ResourceSettings.Split(',');
+        if (resourceSettings.Length < 2)
         {
-            throw new ArgumentException("CorrespondenceSettings must contain resourceId and sender separated by comma", nameof(settings));
+            throw new ArgumentException("ResourceSettings must contain resourceId and sender separated by comma", nameof(options));
         }
         
-        var resourceId = correspondenceSettings[0].Trim();
-        var sender = correspondenceSettings[1].Trim();
+        var resourceId = resourceSettings[0].Trim();
+        var sender = resourceSettings[1].Trim();
 
         ResourceId = resourceId;
         Sender = sender;
         CountryCode = settings.CountryCode;
+        IgnoreReservation = settings.IgnoreReservation;
 
-        // Set base URL based on test server setting
-        if (settings.UseAltinnTestServers)
-        {
-            _correspondenceClient.BaseUrl = "https://platform.tt02.altinn.no";
-        }
-        else
-        {
-            _correspondenceClient.BaseUrl = "https://platform.altinn.no";
-        }
+        _correspondenceClient.BaseUrl = settings.BaseUri;
     }
 
     /// <inheritdoc />        
@@ -101,6 +101,7 @@ public class DdMessagingService : IDdMessagingService
             {
                 Correspondence = new BaseCorrespondenceExt
                 {
+                    IgnoreReservation = IgnoreReservation,
                     ResourceId = ResourceId,
                     SendersReference = $"{SenderReferencePrefix}{Rand}",
                     MessageSender = correspondence.Sender,
