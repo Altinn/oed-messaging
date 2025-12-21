@@ -9,7 +9,7 @@
   
   <PropertyGroup>
     <PackageId>Altinn.Dd.Correspondence</PackageId>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <Authors>Digitaliseringsdirektoratet</Authors>
     <Company>Digitaliseringsdirektoratet</Company>
     <PackageTags>digdir;altinn;oed;digitalt dødsbo</PackageTags>
