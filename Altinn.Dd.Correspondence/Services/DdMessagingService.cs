@@ -115,7 +115,8 @@ public class DdMessagingService : IDdMessagingService
                     RequestedPublishTime = correspondence.VisibleDateTime ?? DateTimeOffset.Now,
                     AllowSystemDeleteAfter = correspondence.VisibleDateTime?.AddYears(1) ?? DateTimeOffset.Now.AddYears(1),
                     PropertyList = new Dictionary<string, string>(),
-                    Notification = CreateNotification(correspondence.Notification, correspondence.ShipmentDatetime)
+                    Notification = CreateNotification(correspondence.Notification, correspondence.ShipmentDatetime),
+                    IgnoreReservation = correspondence.IgnoreReservation
                 },
                 Recipients = new List<string> { FormatRecipient(correspondence.Recipient ?? string.Empty) },
                 ExistingAttachments = new List<Guid>(),
