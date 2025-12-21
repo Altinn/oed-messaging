@@ -56,4 +56,9 @@ public class DdMessageDetails
     /// If not provided, a new GUID will be generated automatically.
     /// </summary>
     public Guid? IdempotencyKey { get; set; }
+
+    /// <summary>
+    /// Specifies whether the correspondence can override reservation against digital communication in KRR.
+    /// </summary>
+    public bool IgnoreReservation { get; set; }
 }
