@@ -6,11 +6,8 @@
       "EncodedJwk": "YOUR_BASE64_ENCODED_JWK_HERE",
       "EnableDebugLogging": false
     },
-    "CorrespondenceSettings": {
-      "CorrespondenceSettings": "oed-correspondence,digdir",
-      "UseAltinnTestServers": true,
-      "CountryCode": "0192"
-    }
+    "ResourceId": "oed-correspondence",
+    "Environment": "Development"
   }
 }
 
