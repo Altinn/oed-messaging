@@ -23,4 +23,6 @@ public class NotificationDetails
     /// If provided along with EmailSubject, an email will be sent to the recipient.
     /// </summary>
     public string? EmailBody { get; set; }
+
+    public EmailContentType EmailContentType { get; set; } = EmailContentType.Plain;
 }

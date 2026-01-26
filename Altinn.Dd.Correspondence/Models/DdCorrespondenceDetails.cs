@@ -4,7 +4,7 @@ namespace Altinn.Dd.Correspondence.Models;
 /// This class holds the details needed to create a new correspondence in Altinn 3.
 /// Compatible with the existing Altinn 2 interface for seamless migration.
 /// </summary>
-public class DdMessageDetails
+public class DdCorrespondenceDetails
 {
     /// <summary>
     /// Gets or sets the correspondence recipient. This should be an organization number or social security number.
@@ -55,5 +55,16 @@ public class DdMessageDetails
     /// Gets or sets the idempotency key to prevent duplicate correspondence creation.
     /// If not provided, a new GUID will be generated automatically.
     /// </summary>
-    public Guid? IdempotencyKey { get; set; }
+    public Guid IdempotencyKey { get; set; } = Guid.NewGuid();
+
+    /// <summary>
+    /// Specifies whether the correspondence can override reservation against digital communication in KRR.
+    /// </summary>
+    public bool IgnoreReservation { get; set; }
+
+    /// <summary>
+    /// Gets or sets the sender's reference for tracking and identification purposes.
+    /// If not provided, a reference will be automatically generated.
+    /// </summary>
+    public string? SendersReference { get; set; }
 }
