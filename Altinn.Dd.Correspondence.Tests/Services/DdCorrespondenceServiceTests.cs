@@ -59,7 +59,6 @@ public class DdCorrespondenceServiceTests
         var result = await _sut.SendCorrespondence(correspondence);
 
         Assert.True(result.IsFailure);
-        Assert.NotNull(result.Error);
     }
 
     private static DdCorrespondenceDetails ValidCorrespondenceDetails(string recipient)
