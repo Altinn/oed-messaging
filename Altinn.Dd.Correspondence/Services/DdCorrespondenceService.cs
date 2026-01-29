@@ -78,9 +78,9 @@ public sealed class DdCorrespondenceService : IDdCorrespondenceService
             var receipt = new ReceiptExternal(result.ToDto(), correspondence.IdempotencyKey, sendersReference);
             return CorrespondenceResult.Success(receipt);
         }
-        catch (AltinnCorrespondenceException e)
+        catch (AltinnCorrespondenceException<ProblemDetails> e)
         {
-            return CorrespondenceResult.Failure(e.Message);
+            return CorrespondenceResult.Failure(e.Result.Detail);
         }
     }
 
