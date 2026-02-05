@@ -5,37 +5,28 @@ namespace Altinn.Dd.Correspondence.Extensions;
 
 internal static class Mapper
 {
-    extension(InitializeCorrespondencesResponseExt e)
+    public static InitializedCorrespondences ToDto(this InitializeCorrespondencesResponseExt e)
     {
-        public InitializedCorrespondences ToDto()
-        {
-            return new InitializedCorrespondences(
-                Correspondences: [.. e.Correspondences.Select(ToDto)],
-                AttachmentIds: e.AttachmentIds
-            );
-        }
+        return new InitializedCorrespondences(
+            Correspondences: [.. e.Correspondences.Select(ToDto)],
+            AttachmentIds: e.AttachmentIds
+        );
     }
 
-    extension(InitializedCorrespondencesExt e)
+    public static InitializedCorrespondence ToDto(this InitializedCorrespondencesExt e)
     {
-        public InitializedCorrespondence ToDto()
-        {
-            return new InitializedCorrespondence(
-                Status: (CorrespondenceStatus)e.Status,
-                Recipient: e.Recipient,
-                Notifications: e.Notifications?.Select(ToDto)?.ToList()
-            );
-        }
+        return new InitializedCorrespondence(
+            Status: (CorrespondenceStatus)e.Status,
+            Recipient: e.Recipient,
+            Notifications: e.Notifications?.Select(ToDto)?.ToList()
+        );
     }
 
-    extension(InitializedCorrespondencesNotificationsExt e)
+    public static InitializedNotification ToDto(this InitializedCorrespondencesNotificationsExt e)
     {
-        public InitializedNotification ToDto()
-        {
-            return new InitializedNotification(
-                OrderId: e.OrderId,
-                IsReminder: e.IsReminder,
-                Status: (InitializedNotificationStatus)e.Status);
-        }
+        return new InitializedNotification(
+            OrderId: e.OrderId,
+            IsReminder: e.IsReminder,
+            Status: (InitializedNotificationStatus)e.Status);
     }
 }

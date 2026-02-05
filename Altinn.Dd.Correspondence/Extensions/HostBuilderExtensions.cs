@@ -18,39 +18,36 @@ public static class ServiceCollectionExtensions
     private const string CorrespondenceScope = "altinn:serviceowner altinn:correspondence.write";
     private const int RetryCount = 3;
 
-
-    extension(IServiceCollection services)
+    public static IServiceCollection AddDdCorrespondenceService(
+        this IServiceCollection services,
+        string configSectionPath,
+        Action<DdCorrespondenceOptions>? configureOptions = null)
     {
-        public IServiceCollection AddDdCorrespondenceService(
-            string configSectionPath,
-            Action<DdCorrespondenceOptions>? configureOptions = null)
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<DdCorrespondenceOptions>, ValidateDdCorrespondenceOptions>());
+        services.AddOptionsWithValidateOnStart<DdCorrespondenceOptions>()
+                .BindConfiguration(configSectionPath);
+        if (configureOptions != null)
         {
-            services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<DdCorrespondenceOptions>, ValidateDdCorrespondenceOptions>());
-            services.AddOptionsWithValidateOnStart<DdCorrespondenceOptions>()
-                    .BindConfiguration(configSectionPath);
-            if (configureOptions != null)
-            {
-                services.Configure(configureOptions);
-            }
-
-            var correspondenceOptions = services.BuildServiceProvider().GetRequiredService<IOptions<DdCorrespondenceOptions>>().Value;
-            correspondenceOptions.MaskinportenSettings.Scope = CorrespondenceScope;
-
-            services.AddTransient<IDdCorrespondenceService, DdCorrespondenceService>();
-            services.AddMaskinportenHttpClient<SettingsJwkClientDefinition, IDdCorrespondenceService, DdCorrespondenceService>(correspondenceOptions.MaskinportenSettings)
-                .AddHttpMessageHandler(() => new AsyncPolicyDelegatingHandler(CreateRetryPolicy()))
-                .ConfigureHttpClient(httpClient =>
-                {
-                    httpClient.BaseAddress = correspondenceOptions.Environment switch
-                    {
-                        ApiEnvironment.Development => ApiEndpoints.PlatformTest, // TODO: Change when dev endpoint for platform is available
-                        ApiEnvironment.Staging => ApiEndpoints.PlatformTest,
-                        ApiEnvironment.Production => ApiEndpoints.PlatformProduction,
-                        _ => throw new ArgumentOutOfRangeException($"Unknown environment: {correspondenceOptions.Environment}")
-                    };
-                });
-            return services;
+            services.Configure(configureOptions);
         }
+
+        var correspondenceOptions = services.BuildServiceProvider().GetRequiredService<IOptions<DdCorrespondenceOptions>>().Value;
+        correspondenceOptions.MaskinportenSettings.Scope = CorrespondenceScope;
+
+        services.AddTransient<IDdCorrespondenceService, DdCorrespondenceService>();
+        services.AddMaskinportenHttpClient<SettingsJwkClientDefinition, IDdCorrespondenceService, DdCorrespondenceService>(correspondenceOptions.MaskinportenSettings)
+            .AddHttpMessageHandler(() => new AsyncPolicyDelegatingHandler(CreateRetryPolicy()))
+            .ConfigureHttpClient(httpClient =>
+            {
+                httpClient.BaseAddress = correspondenceOptions.Environment switch
+                {
+                    ApiEnvironment.Development => ApiEndpoints.PlatformTest, // TODO: Change when dev endpoint for platform is available
+                    ApiEnvironment.Staging => ApiEndpoints.PlatformTest,
+                    ApiEnvironment.Production => ApiEndpoints.PlatformProduction,
+                    _ => throw new ArgumentOutOfRangeException($"Unknown environment: {correspondenceOptions.Environment}")
+                };
+            });
+        return services;
     }
 
     private static IAsyncPolicy<HttpResponseMessage> CreateRetryPolicy()
@@ -89,5 +86,4 @@ public static class ServiceCollectionExtensions
                 cancellationToken);
         }
     }
-
 }
