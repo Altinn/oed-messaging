@@ -35,18 +35,26 @@ public static class ServiceCollectionExtensions
         correspondenceOptions.MaskinportenSettings.Scope = CorrespondenceScope;
 
         services.AddTransient<IDdCorrespondenceService, DdCorrespondenceService>();
-        services.AddMaskinportenHttpClient<SettingsJwkClientDefinition, IDdCorrespondenceService, DdCorrespondenceService>(correspondenceOptions.MaskinportenSettings)
-            .AddHttpMessageHandler(() => new AsyncPolicyDelegatingHandler(CreateRetryPolicy()))
-            .ConfigureHttpClient(httpClient =>
-            {
-                httpClient.BaseAddress = correspondenceOptions.Environment switch
+
+        var maskinportenSettings = correspondenceOptions.MaskinportenSettings;
+        var maskinportenHttpClient = maskinportenSettings switch
+        {
+            { EncodedJwk: not null } => services.AddMaskinportenHttpClient<SettingsJwkClientDefinition, IDdCorrespondenceService, DdCorrespondenceService>(maskinportenSettings),
+            { EncodedX509: not null } => services.AddMaskinportenHttpClient<SettingsX509ClientDefinition, IDdCorrespondenceService, DdCorrespondenceService>(maskinportenSettings),
+            _ => throw new InvalidOperationException("MaskinportenSettings must specify either EncodedJwk or EncodedX509.")
+        };
+
+        maskinportenHttpClient!.AddHttpMessageHandler(() => new AsyncPolicyDelegatingHandler(CreateRetryPolicy()))
+                .ConfigureHttpClient(httpClient =>
                 {
-                    ApiEnvironment.Development => ApiEndpoints.PlatformTest, // TODO: Change when dev endpoint for platform is available
-                    ApiEnvironment.Staging => ApiEndpoints.PlatformTest,
-                    ApiEnvironment.Production => ApiEndpoints.PlatformProduction,
-                    _ => throw new ArgumentOutOfRangeException($"Unknown environment: {correspondenceOptions.Environment}")
-                };
-            });
+                    httpClient.BaseAddress = correspondenceOptions.Environment switch
+                    {
+                        ApiEnvironment.Development => ApiEndpoints.PlatformTest, // TODO: Change when dev endpoint for platform is available
+                        ApiEnvironment.Staging => ApiEndpoints.PlatformTest,
+                        ApiEnvironment.Production => ApiEndpoints.PlatformProduction,
+                        _ => throw new ArgumentOutOfRangeException($"Unknown environment: {correspondenceOptions.Environment}")
+                    };
+                });
         return services;
     }
 
