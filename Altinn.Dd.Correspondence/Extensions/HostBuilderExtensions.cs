@@ -23,19 +23,48 @@ public static class ServiceCollectionExtensions
         string configSectionPath,
         Action<DdCorrespondenceOptions>? configureOptions = null)
     {
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<DdCorrespondenceOptions>, ValidateDdCorrespondenceOptions>());
         services.AddOptionsWithValidateOnStart<DdCorrespondenceOptions>()
                 .BindConfiguration(configSectionPath);
+
+        return AddDdCorrespondenceServiceInternal(services, configureOptions);
+    }
+
+    public static IServiceCollection AddDdCorrespondenceService(
+        this IServiceCollection services,
+        Action<DdCorrespondenceOptions>? configureOptions = null)
+    {
+        services.AddOptionsWithValidateOnStart<DdCorrespondenceOptions>();
+
+        return AddDdCorrespondenceServiceInternal(services, configureOptions);
+    }
+
+    private static IServiceCollection AddDdCorrespondenceServiceInternal(
+        IServiceCollection services,
+        Action<DdCorrespondenceOptions>? configureOptions)
+    {
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<DdCorrespondenceOptions>, ValidateDdCorrespondenceOptions>());
+
         if (configureOptions != null)
         {
             services.Configure(configureOptions);
         }
 
-        var correspondenceOptions = services.BuildServiceProvider().GetRequiredService<IOptions<DdCorrespondenceOptions>>().Value;
+        var correspondenceOptions = services.BuildServiceProvider()
+            .GetRequiredService<IOptions<DdCorrespondenceOptions>>()
+            .Value;
         correspondenceOptions.MaskinportenSettings.Scope = CorrespondenceScope;
 
         services.AddTransient<IDdCorrespondenceService, DdCorrespondenceService>();
 
+        ConfigureMaskinportenHttpClient(services, correspondenceOptions);
+
+        return services;
+    }
+
+    private static void ConfigureMaskinportenHttpClient(
+        IServiceCollection services,
+        DdCorrespondenceOptions correspondenceOptions)
+    {
         var maskinportenSettings = correspondenceOptions.MaskinportenSettings;
         var maskinportenHttpClient = maskinportenSettings switch
         {
@@ -45,17 +74,16 @@ public static class ServiceCollectionExtensions
         };
 
         maskinportenHttpClient!.AddHttpMessageHandler(() => new AsyncPolicyDelegatingHandler(CreateRetryPolicy()))
-                .ConfigureHttpClient(httpClient =>
+            .ConfigureHttpClient(httpClient =>
+            {
+                httpClient.BaseAddress = correspondenceOptions.Environment switch
                 {
-                    httpClient.BaseAddress = correspondenceOptions.Environment switch
-                    {
-                        ApiEnvironment.Development => ApiEndpoints.PlatformTest, // TODO: Change when dev endpoint for platform is available
-                        ApiEnvironment.Staging => ApiEndpoints.PlatformTest,
-                        ApiEnvironment.Production => ApiEndpoints.PlatformProduction,
-                        _ => throw new ArgumentOutOfRangeException($"Unknown environment: {correspondenceOptions.Environment}")
-                    };
-                });
-        return services;
+                    ApiEnvironment.Development => ApiEndpoints.PlatformTest, // TODO: Change when dev endpoint for platform is available
+                    ApiEnvironment.Staging => ApiEndpoints.PlatformTest,
+                    ApiEnvironment.Production => ApiEndpoints.PlatformProduction,
+                    _ => throw new ArgumentOutOfRangeException($"Unknown environment: {correspondenceOptions.Environment}")
+                };
+            });
     }
 
     private static IAsyncPolicy<HttpResponseMessage> CreateRetryPolicy()

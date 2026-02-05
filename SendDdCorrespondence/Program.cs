@@ -4,6 +4,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Altinn.Dd.Correspondence.Services;
+using Altinn.Dd.Correspondence.Options;
+using Altinn.ApiClients.Maskinporten.Config;
 
 var configuration = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json")
@@ -15,13 +17,39 @@ var host = Host.CreateDefaultBuilder(args)
     {
         // Eksempel 1
         services.AddDdCorrespondenceService("DdConfig");
-        
+
         // Eksempel 2
         //services.AddDdCorrespondenceService("NavnetPåKonsumentSeksjonIAppsettings", options =>
         //{
-        //    options.CorrespondenceSettings = configuration.GetSection("DdConfig:CorrespondenceSettings").Value!;
-        //    options.MaskinportenSettings = new SettingsJwkClientDefinition();
-        //    options.UseAltinnTestServers = true;
+        //    var config = services.BuildServiceProvider().GetService<IConfiguration>();
+        //    var ddConfig = config!.GetSection("DdConfig");
+        //    var mpSettings = ddConfig.GetSection("MaskinportenSettings");
+        //    options.MaskinportenSettings = new MaskinportenSettings
+        //    {
+        //        ClientId = mpSettings.GetValue<string>("ClientId"),
+        //        EncodedJwk = mpSettings.GetValue<string>("EncodedJwk"),
+        //        Environment = mpSettings.GetValue<string>("Environment"),
+        //        EnableDebugLogging = mpSettings.GetValue<bool>("EnableDebugLogging")
+        //    };
+        //    options.ResourceId = ddConfig.GetValue<string>("ResourceId")!;
+        //    options.Environment = ApiEnvironment.Staging;
+        //});
+
+        // Eksempel 3
+        //services.AddDdCorrespondenceService(options =>
+        //{
+        //    var config = services.BuildServiceProvider().GetService<IConfiguration>();
+        //    var ddConfig = config!.GetSection("DdConfig");
+        //    var mpSettings = ddConfig.GetSection("MaskinportenSettings");
+        //    options.MaskinportenSettings = new MaskinportenSettings
+        //    {
+        //        ClientId = mpSettings.GetValue<string>("ClientId"),
+        //        EncodedJwk = mpSettings.GetValue<string>("EncodedJwk"),
+        //        Environment = mpSettings.GetValue<string>("Environment"),
+        //        EnableDebugLogging = mpSettings.GetValue<bool>("EnableDebugLogging")
+        //    };
+        //    options.ResourceId = ddConfig.GetValue<string>("ResourceId")!;
+        //    options.Environment = ApiEnvironment.Staging;
         //});
     })
     .Build();
