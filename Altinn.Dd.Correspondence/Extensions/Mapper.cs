@@ -16,6 +16,7 @@ internal static class Mapper
     public static InitializedCorrespondence ToDto(this InitializedCorrespondencesExt e)
     {
         return new InitializedCorrespondence(
+            CorrespondenceId: e.CorrespondenceId,
             Status: (CorrespondenceStatus)e.Status,
             Recipient: e.Recipient,
             Notifications: e.Notifications?.Select(ToDto)?.ToList()
