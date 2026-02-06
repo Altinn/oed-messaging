@@ -53,6 +53,7 @@ public static class ServiceCollectionExtensions
             .GetRequiredService<IOptions<DdCorrespondenceOptions>>()
             .Value;
         correspondenceOptions.MaskinportenSettings.Scope = CorrespondenceScope;
+        correspondenceOptions.MaskinportenSettings.ExhangeToAltinnToken = true;
 
         services.AddTransient<IDdCorrespondenceService, DdCorrespondenceService>();
 
