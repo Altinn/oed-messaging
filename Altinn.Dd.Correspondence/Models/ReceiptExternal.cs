@@ -4,7 +4,7 @@ public record ReceiptExternal(InitializedCorrespondences InitalizedCorrespondenc
 
 public record InitializedCorrespondences(ICollection<InitializedCorrespondence> Correspondences, ICollection<Guid> AttachmentIds);
 
-public record InitializedCorrespondence(CorrespondenceStatus Status, string Recipient, ICollection<InitializedNotification>? Notifications);
+public record InitializedCorrespondence(Guid CorrespondenceId, CorrespondenceStatus Status, string Recipient, ICollection<InitializedNotification>? Notifications);
 
 public record InitializedNotification(Guid? OrderId, bool? IsReminder, InitializedNotificationStatus Status);
 

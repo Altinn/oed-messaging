@@ -41,6 +41,9 @@ var host = Host.CreateDefaultBuilder(args)
         //    var config = services.BuildServiceProvider().GetService<IConfiguration>();
         //    var ddConfig = config!.GetSection("DdConfig");
         //    var mpSettings = ddConfig.GetSection("MaskinportenSettings");
+        //
+        //    options.ResourceId = ddConfig.GetValue<string>("ResourceId")!;
+        //    options.Environment = ApiEnvironment.Staging;
         //    options.MaskinportenSettings = new MaskinportenSettings
         //    {
         //        ClientId = mpSettings.GetValue<string>("ClientId"),
@@ -48,8 +51,6 @@ var host = Host.CreateDefaultBuilder(args)
         //        Environment = mpSettings.GetValue<string>("Environment"),
         //        EnableDebugLogging = mpSettings.GetValue<bool>("EnableDebugLogging")
         //    };
-        //    options.ResourceId = ddConfig.GetValue<string>("ResourceId")!;
-        //    options.Environment = ApiEnvironment.Staging;
         //});
     })
     .Build();
