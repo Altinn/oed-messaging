@@ -27,7 +27,7 @@ public class DdCorrespondenceServiceIntegrationTests
             Correspondences = [new InitializedCorrespondencesExt { CorrespondenceId = Guid.NewGuid(), Status = CorrespondenceStatusExt.Initialized }]
         };
 
-        mockHttp.When(HttpMethod.Post, "https://platform.tt02.altinn.no/*")
+        mockHttp.When(HttpMethod.Post, "https://platform.tt02.altinn.no/correspondence/api/v1/correspondence")
                 .Respond("application/json", JsonSerializer.Serialize(receipt));
 
         mockHttp.When(HttpMethod.Get, "*/.well-known/oauth-authorization-server")
@@ -36,6 +36,7 @@ public class DdCorrespondenceServiceIntegrationTests
                     issuer = "https://test.maskinporten.no/",
                     token_endpoint = "https://test.maskinporten.no/token"
                 }));
+        // authentication/api/v1/exchange/maskinporten
 
         var tokenResponse = new
         {
@@ -46,7 +47,12 @@ public class DdCorrespondenceServiceIntegrationTests
         };
 
         mockHttp.When(HttpMethod.Post, "*/token")
-                .Respond("application/json", JsonSerializer.Serialize(tokenResponse));
+            .Respond("application/json", JsonSerializer.Serialize(tokenResponse));
+
+        var altinnTokenResponse = GenerateEncodedTestJwk();
+
+        mockHttp.When(HttpMethod.Get, "https://platform.tt02.altinn.no/authentication/api/v1/exchange/maskinporten")
+                .Respond("application/json", JsonSerializer.Serialize(altinnTokenResponse));
 
         using var host = Host.CreateDefaultBuilder()
             .ConfigureAppConfiguration((ctx, builder) =>
