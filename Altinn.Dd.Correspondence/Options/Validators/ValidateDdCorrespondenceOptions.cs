@@ -18,10 +18,6 @@ internal partial class ValidateDdCorrespondenceOptions : IValidateOptions<DdCorr
         {
             return ValidateOptionsResult.Fail($"{nameof(maskinportenSettings)} must be provided.");
         }
-        if (maskinportenSettings.EncodedJwk is null)
-        {
-            return ValidateOptionsResult.Fail($"{nameof(maskinportenSettings.EncodedJwk)} must be provided.");
-        }
         if (maskinportenSettings.ClientId is null)
         {
             return ValidateOptionsResult.Fail($"{nameof(maskinportenSettings.ClientId)} must be provided.");
