@@ -7,6 +7,8 @@ namespace Altinn.Dd.InternalEvents.Estate;
 /// </summary>
 public class EstateCaseUpdatedEvent
 {
+    [JsonPropertyName("time")]
+    public required DateTimeOffset Time { get; set; }
     [JsonPropertyName("caseId")] 
     public required string CaseId { get; set; }
     [JsonPropertyName("caseNumber")] 
