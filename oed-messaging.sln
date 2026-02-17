@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.0.11205.157 d18.0
+VisualStudioVersion = 18.0.11205.157
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Altinn.Oed.Messaging", "Altinn.Oed.Messaging\Altinn.Oed.Messaging.csproj", "{AD5D0472-5887-4C96-A3D2-D1950BB41233}"
 EndProject
@@ -12,6 +12,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Altinn.Dd.Correspondence.Tests", "Altinn.Dd.Correspondence.Tests\Altinn.Dd.Correspondence.Tests.csproj", "{E211CA9B-F2C0-4792-AE06-B3DFABEDDA27}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SendDdCorrespondence", "SendDdCorrespondence\SendDdCorrespondence.csproj", "{38C7E544-81A5-4F27-A877-BAF8AEBA8C62}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Altinn.Dd.InternalEvents", "Altinn.Dd.InternalEvents\Altinn.Dd.InternalEvents.csproj", "{B02FFFFF-8058-4C50-9B97-F11E278EA948}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,6 +41,10 @@ Global
 		{38C7E544-81A5-4F27-A877-BAF8AEBA8C62}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{38C7E544-81A5-4F27-A877-BAF8AEBA8C62}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{38C7E544-81A5-4F27-A877-BAF8AEBA8C62}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B02FFFFF-8058-4C50-9B97-F11E278EA948}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B02FFFFF-8058-4C50-9B97-F11E278EA948}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B02FFFFF-8058-4C50-9B97-F11E278EA948}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B02FFFFF-8058-4C50-9B97-F11E278EA948}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
