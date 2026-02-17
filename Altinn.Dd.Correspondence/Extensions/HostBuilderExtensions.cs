@@ -1,6 +1,11 @@
 using Altinn.ApiClients.Maskinporten.Extensions;
 using Altinn.ApiClients.Maskinporten.Services;
 using Altinn.Dd.Correspondence.Constants;
+using Altinn.Dd.Correspondence.Features;
+using Altinn.Dd.Correspondence.Features.Get;
+using Altinn.Dd.Correspondence.Features.Search;
+using Altinn.Dd.Correspondence.HttpClients;
+using Altinn.Dd.Correspondence.Models;
 using Altinn.Dd.Correspondence.Options;
 using Altinn.Dd.Correspondence.Options.Validators;
 using Altinn.Dd.Correspondence.Services;
@@ -55,6 +60,9 @@ public static class ServiceCollectionExtensions
         correspondenceOptions.MaskinportenSettings.Scope = CorrespondenceScope;
         correspondenceOptions.MaskinportenSettings.ExhangeToAltinnToken = true;
 
+        services.AddTransient<IHandler<DdCorrespondenceDetails, CorrespondenceResult>, Features.Send.Handler>();
+        services.AddTransient<IHandler<Query, Features.Search.Result>, Features.Search.Handler>();
+        services.AddTransient<IHandler<Request, Features.Get.Result>, Features.Get.Handler>();
         services.AddTransient<IDdCorrespondenceService, DdCorrespondenceService>();
 
         ConfigureMaskinportenHttpClient(services, correspondenceOptions);
@@ -69,8 +77,8 @@ public static class ServiceCollectionExtensions
         var maskinportenSettings = correspondenceOptions.MaskinportenSettings;
         var maskinportenHttpClient = maskinportenSettings switch
         {
-            { EncodedJwk: not null } => services.AddMaskinportenHttpClient<SettingsJwkClientDefinition, IDdCorrespondenceService, DdCorrespondenceService>(maskinportenSettings),
-            { EncodedX509: not null } => services.AddMaskinportenHttpClient<SettingsX509ClientDefinition, IDdCorrespondenceService, DdCorrespondenceService>(maskinportenSettings),
+            { EncodedJwk: not null } => services.AddMaskinportenHttpClient<SettingsJwkClientDefinition, AltinnCorrespondenceClient>(maskinportenSettings),
+            { EncodedX509: not null } => services.AddMaskinportenHttpClient<SettingsX509ClientDefinition, AltinnCorrespondenceClient>(maskinportenSettings),
             _ => throw new InvalidOperationException("MaskinportenSettings must specify either EncodedJwk or EncodedX509.")
         };
 

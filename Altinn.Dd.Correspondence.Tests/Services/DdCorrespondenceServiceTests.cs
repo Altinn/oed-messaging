@@ -32,7 +32,7 @@ public class DdCorrespondenceServiceTests
 
         var httpClient = _mockHttp.ToHttpClient();
         httpClient.BaseAddress = new Uri("http://localhost:3000");
-        _sut = new DdCorrespondenceService(httpClient, _optionsMonitor);
+        //_sut = new DdCorrespondenceService(httpClient, _optionsMonitor);
     }
 
     [Fact]
