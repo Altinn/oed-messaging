@@ -20,7 +20,7 @@ namespace Altinn.Dd.Correspondence.Extensions;
 
 public static class ServiceCollectionExtensions
 {
-    private const string CorrespondenceScope = "altinn:serviceowner altinn:correspondence.write";
+    private const string CorrespondenceScope = "altinn:serviceowner altinn:correspondence.write altinn:correspondence.read";
     private const int RetryCount = 3;
 
     public static IServiceCollection AddDdCorrespondenceService(
