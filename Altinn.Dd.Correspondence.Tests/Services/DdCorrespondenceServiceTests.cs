@@ -1,38 +1,25 @@
-﻿using Altinn.ApiClients.Maskinporten.Config;
-using Altinn.Dd.Correspondence.HttpClients;
+﻿using Altinn.Dd.Correspondence.Features;
+using Altinn.Dd.Correspondence.Features.Search;
 using Altinn.Dd.Correspondence.Models;
-using Altinn.Dd.Correspondence.Options;
 using Altinn.Dd.Correspondence.Services;
-using Microsoft.Extensions.Options;
 using NSubstitute;
-using RichardSzalay.MockHttp;
-using System.Net;
-using System.Text;
-using System.Text.Json;
 
 namespace Altinn.Oed.Correspondence.Tests.Services;
 
 public class DdCorrespondenceServiceTests
 {
-    private readonly MockHttpMessageHandler _mockHttp;
-    private readonly IOptionsMonitor<DdCorrespondenceOptions> _optionsMonitor;
+    private readonly IHandler<DdCorrespondenceDetails, CorrespondenceResult> _send;
+    private readonly IHandler<Query, Dd.Correspondence.Features.Search.Result> _search;
+    private readonly IHandler<Dd.Correspondence.Features.Get.Request, Dd.Correspondence.Features.Get.Result> _get;
     private readonly DdCorrespondenceService _sut;
 
-    // Test de ulike notifikasjonskanalene og formatering av mottaker
     public DdCorrespondenceServiceTests()
     {
-        _mockHttp = new MockHttpMessageHandler();
-        
-        _optionsMonitor = Substitute.For<IOptionsMonitor<DdCorrespondenceOptions>>();
-        _optionsMonitor.CurrentValue.Returns(new DdCorrespondenceOptions 
-        {
-            ResourceId = "test-resource-id",
-            MaskinportenSettings = new MaskinportenSettings()
-        });
+        _send = Substitute.For<IHandler<DdCorrespondenceDetails, CorrespondenceResult>>();
+        _search = Substitute.For<IHandler<Query, Dd.Correspondence.Features.Search.Result>>();
+        _get = Substitute.For<IHandler<Dd.Correspondence.Features.Get.Request, Dd.Correspondence.Features.Get.Result>>();
 
-        var httpClient = _mockHttp.ToHttpClient();
-        httpClient.BaseAddress = new Uri("http://localhost:3000");
-        _sut = new DdCorrespondenceService(httpClient, _optionsMonitor);
+        _sut = new DdCorrespondenceService(_send, _search, _get);
     }
 
     [Fact]
@@ -40,7 +27,12 @@ public class DdCorrespondenceServiceTests
     {
         var recipient = "test-recipient";
         var correspondence = ValidCorrespondenceDetails(recipient);
-        CorrespondenceResponse(HttpStatusCode.OK, recipient);
+        var expectedReceipt = new ReceiptExternal(
+            InitalizedCorrespondences: null,
+            IdempotencyKey: correspondence.IdempotencyKey,
+            SendersReference: correspondence.SendersReference);
+
+        _send.Handle(correspondence).Returns(CorrespondenceResult.Success(expectedReceipt));
 
         var result = await _sut.SendCorrespondence(correspondence);
 
@@ -54,11 +46,65 @@ public class DdCorrespondenceServiceTests
     public async Task SendCorrespondence_400BadRequest_FailureResult()
     {
         var correspondence = ValidCorrespondenceDetails(string.Empty);
-        CorrespondenceResponse(HttpStatusCode.BadRequest, string.Empty);
+        _send.Handle(correspondence).Returns(CorrespondenceResult.Failure("Bad request"));
 
         var result = await _sut.SendCorrespondence(correspondence);
 
         Assert.True(result.IsFailure);
+    }
+
+    [Fact]
+    public async Task Search_ShouldInvokeHandlerAndReturnResult()
+    {
+        var query = new Query();
+        var expected = Dd.Correspondence.Features.Search.Result.Success([Guid.NewGuid()]);
+        _search.Handle(query).Returns(expected);
+
+        var result = await _sut.Search(query);
+
+        Assert.Same(expected, result);
+        await _search.Received(1).Handle(query);
+    }
+
+    [Fact]
+    public async Task Search_WhenHandlerReturnsFailure_ShouldReturnSameFailure()
+    {
+        var query = new Query();
+        var expected = Dd.Correspondence.Features.Search.Result.Failure("Search failed");
+        _search.Handle(query).Returns(expected);
+
+        var result = await _sut.Search(query);
+
+        Assert.Same(expected, result);
+        Assert.True(result.IsFailure);
+        Assert.Equal("Search failed", result.Error);
+    }
+
+    [Fact]
+    public async Task Get_ShouldInvokeHandlerAndReturnResult()
+    {
+        var request = new Dd.Correspondence.Features.Get.Request(Guid.NewGuid());
+        var expected = Dd.Correspondence.Features.Get.Result.Success(null);
+        _get.Handle(request).Returns(expected);
+
+        var result = await _sut.Get(request);
+
+        Assert.Same(expected, result);
+        await _get.Received(1).Handle(request);
+    }
+
+    [Fact]
+    public async Task Get_WhenHandlerReturnsFailure_ShouldReturnSameFailure()
+    {
+        var request = new Dd.Correspondence.Features.Get.Request(Guid.NewGuid());
+        var expected = Dd.Correspondence.Features.Get.Result.Failure("Not found");
+        _get.Handle(request).Returns(expected);
+
+        var result = await _sut.Get(request);
+
+        Assert.Same(expected, result);
+        Assert.True(result.IsFailure);
+        Assert.Equal("Not found", result.Error);
     }
 
     private static DdCorrespondenceDetails ValidCorrespondenceDetails(string recipient)
@@ -84,36 +130,5 @@ public class DdCorrespondenceServiceTests
             IgnoreReservation = false,
             VisibleDateTime = DateTime.UtcNow.AddHours(1),
         };
-    }
-
-    private HttpResponseMessage CorrespondenceResponse(HttpStatusCode statusCode, string recipient)
-    {
-        var mockResponse = new HttpResponseMessage(statusCode);
-        var responseData = new InitializeCorrespondencesResponseExt
-        {
-            Correspondences =
-            [
-                new InitializedCorrespondencesExt
-                {
-                    CorrespondenceId = Guid.NewGuid(),
-                    Notifications =
-                    [
-                        new InitializedCorrespondencesNotificationsExt
-                        {
-                            Status = InitializedNotificationStatusExt.Success,
-                            OrderId = Guid.NewGuid(),
-                            IsReminder = false
-                        }
-                    ],
-                    Recipient = recipient,
-                    Status = CorrespondenceStatusExt.Initialized
-                }
-            ],
-        };
-        mockResponse.Content = new StringContent(JsonSerializer.Serialize(responseData), Encoding.UTF8, "application/json");
-        _mockHttp.When("http://localhost:3000/*")
-            .Respond(req => mockResponse);
-
-        return mockResponse;
     }
 }

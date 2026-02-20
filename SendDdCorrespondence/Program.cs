@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Altinn.Dd.Correspondence.Services;
 using Altinn.Dd.Correspondence.Options;
 using Altinn.ApiClients.Maskinporten.Config;
+using Altinn.Dd.Correspondence.Features.Search;
 
 var configuration = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json")
@@ -73,17 +74,19 @@ var messageDetails = new DdCorrespondenceDetails
         SmsText = "Du har en ny melding i Altinn. Logg inn for å lese."
     },
     AllowForwarding = false,
-    IgnoreReservation = true
+    IgnoreReservation = true,
+    IdempotencyKey = Guid.NewGuid(),
+    SendersReference = "danieltester"
 };
 
 try
 {
     // 1 måte
-    var receipt = await messagingService.SendCorrespondence(messageDetails);
-    var result = receipt.Match(
-        onSuccess: receipt => $"Woho {receipt.IdempotencyKey}",
-        onFailure: error => $"Buhu {error}");
-    Console.WriteLine(result);
+    //var receipt = await messagingService.SendCorrespondence(messageDetails);
+    //var result = receipt.Match(
+    //    onSuccess: receipt => $"Woho {receipt.IdempotencyKey}",
+    //    onFailure: error => $"Buhu {error}");
+    //Console.WriteLine(result);
 
     // 2 måte
     //var receipt2 = await messagingService.SendCorrespondence(messageDetails);
@@ -95,6 +98,29 @@ try
     //{
     //    Console.WriteLine($"Buhu {receipt2.Error}");
     //}
+
+    // Example Send, Search and Get
+    var sendResult = await messagingService.SendCorrespondence(messageDetails);
+    if (sendResult.IsSuccess)
+    {
+        Console.WriteLine($"Send succeeded: {sendResult.Receipt!.SendersReference}");
+        var query = new Query(
+            Role: CorrespondencesRoleType.Sender,
+            ResourceId: "oed-correspondence", 
+            SendersReference: sendResult.Receipt!.SendersReference);
+
+        var searchResult = await messagingService.Search(query);
+        if (searchResult.IsSuccess)
+        {
+            Console.WriteLine($"Search succeeded: {searchResult.Value!.First()}");
+            var getResult = await messagingService.Get(new Altinn.Dd.Correspondence.Features.Get.Request(searchResult.Value!.First()));
+            if (getResult.IsSuccess)
+            {
+                Console.WriteLine($"Get succeeded: {getResult.Value!.StatusText}");
+            }
+        }
+
+    }
 }
 catch (Exception ex)
 {
