@@ -20,6 +20,7 @@ public class EstateCaseUpdatedEvent
     [JsonPropertyName("probateDeadline")] 
     public required DateTimeOffset ProbateDeadline { get; set; }
     [JsonPropertyName("probateResult")] 
+    [Obsolete("This property will be removed in the next major version. Use the ProbateResultV2 property instead")]
     public ProbateResult? ProbateResult { get; set; }
     [JsonPropertyName("probateResultV2")]
     public ProbateResultV2? ProbateResultV2 { get; set; }
@@ -30,11 +31,13 @@ public class EstateCaseUpdatedEvent
     [JsonPropertyName("accessDate")]
     public DateTimeOffset? AccessDate { get; set; }
     [JsonPropertyName("heirRoles")]
+    [Obsolete("This property will be removed in the next major version. Use the HeirRolesV2 property instead")]
     public IEnumerable<HeirRole> HeirRoles { get; set; } = [];
     [JsonPropertyName("heirRolesV2")]
     public IEnumerable<HeirRoleV2> HeirRolesV2 { get; set; } = [];
 }
 
+[Obsolete("This class will be removed in the next major version. Use ProbateResultV2 instead")]
 public class ProbateResult
 {
     [JsonPropertyName("heirs")]
@@ -53,6 +56,7 @@ public class ProbateResultV2
     public required string Result { get; set; }
 }
 
+[Obsolete("This class will be removed in the next major version. Use subclasses of HeirRoleV2 instead")]
 public class HeirRole
 {
     [JsonPropertyName("nin")]
