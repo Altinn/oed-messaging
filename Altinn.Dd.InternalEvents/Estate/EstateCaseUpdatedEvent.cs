@@ -128,7 +128,7 @@ public class PappPersonHeirRole : HeirRoleV2
 public class PersonHeirRole : HeirRoleV2
 {
     [JsonPropertyName("nin")]
-    public string? Nin { get; set; }
+    public required string Nin { get; set; }
 
     [JsonPropertyName("role")]
     public string? Role { get; set; }
@@ -173,5 +173,5 @@ public class PappPersonProbateHeir : ProbateHeir
 public class PersonProbateHeir : ProbateHeir
 {
     [JsonPropertyName("nin")]
-    public string? Nin { get; set; }
+    public required string Nin { get; set; }
 }
