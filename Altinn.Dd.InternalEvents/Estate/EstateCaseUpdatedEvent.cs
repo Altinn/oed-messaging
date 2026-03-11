@@ -84,6 +84,20 @@ public class HeirRole
     public bool ProbateCertificateRecipient { get; set; }
 }
 
+public class PersonName
+{
+    [JsonPropertyName("lastName")]
+    [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+    public required string LastName { get; set; }
+
+    [JsonPropertyName("firstName")]
+    [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+    public required string FirstName { get; set; }
+
+    [JsonPropertyName("middleName")]
+    public ICollection<string> MiddleName { get; set; } = [];
+}
+
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(PersonHeirRole), typeDiscriminator: "Person")]
 [JsonDerivedType(typeof(PappPersonHeirRole), typeDiscriminator: "PappPerson")]
@@ -119,7 +133,7 @@ public class OrganizationHeirRole : HeirRoleV2
 public class PappPersonHeirRole : HeirRoleV2
 {
     [JsonPropertyName("name")]
-    public required string Name { get; set; }
+    public required PersonName Name { get; set; }
 
     [JsonPropertyName("dateOfBirth")]
     public required DateTimeOffset DateOfBirth { get; set; }
@@ -164,7 +178,7 @@ public class OrganizationProbateHeir : ProbateHeir
 public class PappPersonProbateHeir : ProbateHeir
 {
     [JsonPropertyName("name")]
-    public required string Name { get; set; }
+    public required PersonName Name { get; set; }
 
     [JsonPropertyName("dateOfBirth")]
     public required DateTimeOffset DateOfBirth { get; set; }
