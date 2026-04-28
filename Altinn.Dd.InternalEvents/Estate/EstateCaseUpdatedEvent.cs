@@ -19,9 +19,6 @@ public class EstateCaseUpdatedEvent
     public required string DistrictCourtName { get; set; }
     [JsonPropertyName("probateDeadline")] 
     public required DateTimeOffset ProbateDeadline { get; set; }
-    [JsonPropertyName("probateResult")] 
-    [Obsolete("This property will be removed in the next major version. Use the ProbateResultV2 property instead")]
-    public ProbateResult? ProbateResult { get; set; }
     [JsonPropertyName("probateResultV2")]
     public ProbateResultV2? ProbateResultV2 { get; set; }
     [JsonPropertyName("resultType")]
@@ -30,22 +27,8 @@ public class EstateCaseUpdatedEvent
     public bool? IsCancelled { get; set; }
     [JsonPropertyName("accessDate")]
     public DateTimeOffset? AccessDate { get; set; }
-    [JsonPropertyName("heirRoles")]
-    [Obsolete("This property will be removed in the next major version. Use the HeirRolesV2 property instead")]
-    public IEnumerable<HeirRole> HeirRoles { get; set; } = [];
     [JsonPropertyName("heirRolesV2")]
     public IEnumerable<HeirRoleV2> HeirRolesV2 { get; set; } = [];
-}
-
-[Obsolete("This class will be removed in the next major version. Use ProbateResultV2 instead")]
-public class ProbateResult
-{
-    [JsonPropertyName("heirs")]
-    public IEnumerable<string> Heirs { get; set; } = [];
-    [JsonPropertyName("acceptsDebtHeirs")]
-    public IEnumerable<string> AcceptsDebtHeirs { get; set; } = [];
-    [JsonPropertyName("result")]
-    public required string Result { get; set; }
 }
 
 public class ProbateResultV2
@@ -54,34 +37,6 @@ public class ProbateResultV2
     public IEnumerable<ProbateHeir> Heirs { get; set; } = [];
     [JsonPropertyName("result")]
     public required string Result { get; set; }
-}
-
-[Obsolete("This class will be removed in the next major version. Use subclasses of HeirRoleV2 instead")]
-public class HeirRole
-{
-    [JsonPropertyName("nin")]
-    public string? Nin { get; set; }
-
-    [JsonPropertyName("role")]
-    public string? Role { get; set; }
-
-    [JsonPropertyName("relation")]
-    public string? Relation { get; set; }
-
-    [JsonPropertyName("signedDate")]
-    public DateTimeOffset? SignedDate { get; set; }
-
-    [JsonPropertyName("preferredSettlementProcedure")]
-    public string? PreferredSettlementProcedure { get; set; }
-
-    [JsonPropertyName("willingToAssumeDebt")]
-    public bool WillingToAssumeDebt { get; set; }
-
-    [JsonPropertyName("waiver60DayPeriod")]
-    public bool Waiver60DayPeriod { get; set; }
-
-    [JsonPropertyName("probateCertificateRecipient")]
-    public bool ProbateCertificateRecipient { get; set; }
 }
 
 public class PersonName
