@@ -21,4 +21,8 @@ public static class EventType
     /// Event published by oed-declaration when a claim has been changed requiring the other heirs to sign the declaration again
     /// </summary>
     public const string DeclarationUnsigned = "no.altinn.events.digitalt-dodsbo.v1.declaration-unsigned";
+    /// <summary>
+    /// Event published by oed-events when an update from Freg contains an individual with a protected address.
+    /// </summary>
+    public const string FregProtectedAddressUpdate = "no.altinn.events.digitalt-dodsbo.v1.freg-protected-address-update";
 }
