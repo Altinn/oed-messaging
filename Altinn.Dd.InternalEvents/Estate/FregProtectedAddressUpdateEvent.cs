@@ -5,5 +5,5 @@ namespace Altinn.Dd.InternalEvents.Estate;
 public class FregProtectedAddressUpdateEvent
 {
     [JsonPropertyName("nin")]
-    public required string Nin;
+    public required string Nin { get; set; }
 }
