@@ -18,6 +18,11 @@ public static class EventType
     /// </summary>
     public const string DeclarationSubmitted = "no.altinn.events.digitalt-dodsbo.v1.declaration-submitted";
     /// <summary>
+    /// Event published by oed when a declaration is submitted for an estate by an heir, 
+    /// with the new one-form-per-heir approach. 
+    /// </summary>
+    public const string DeclarationSubmittedV2 = "no.altinn.events.digitalt-dodsbo.v2.declaration-submitted";
+    /// <summary>
     /// Event published by oed-declaration when a claim has been changed requiring the other heirs to sign the declaration again
     /// </summary>
     public const string DeclarationUnsigned = "no.altinn.events.digitalt-dodsbo.v1.declaration-unsigned";
