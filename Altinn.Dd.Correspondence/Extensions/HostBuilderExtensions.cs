@@ -87,7 +87,7 @@ public static class ServiceCollectionExtensions
             {
                 httpClient.BaseAddress = correspondenceOptions.Environment switch
                 {
-                    ApiEnvironment.Development => ApiEndpoints.PlatformTest, // TODO: Change when dev endpoint for platform is available
+                    ApiEnvironment.Development => ApiEndpoints.PlatformTest, // Altinn exposes no separate dev endpoint, so Development shares the test platform
                     ApiEnvironment.Staging => ApiEndpoints.PlatformTest,
                     ApiEnvironment.Production => ApiEndpoints.PlatformProduction,
                     _ => throw new ArgumentOutOfRangeException($"Unknown environment: {correspondenceOptions.Environment}")

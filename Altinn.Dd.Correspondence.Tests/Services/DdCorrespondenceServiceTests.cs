@@ -28,9 +28,9 @@ public class DdCorrespondenceServiceTests
         var recipient = "test-recipient";
         var correspondence = ValidCorrespondenceDetails(recipient);
         var expectedReceipt = new ReceiptExternal(
-            InitalizedCorrespondences: null,
+            InitalizedCorrespondences: new InitializedCorrespondences([], []),
             IdempotencyKey: correspondence.IdempotencyKey,
-            SendersReference: correspondence.SendersReference);
+            SendersReference: correspondence.SendersReference!);
 
         _send.Handle(correspondence).Returns(CorrespondenceResult.Success(expectedReceipt));
 
@@ -84,7 +84,7 @@ public class DdCorrespondenceServiceTests
     public async Task Get_ShouldInvokeHandlerAndReturnResult()
     {
         var request = new Dd.Correspondence.Features.Get.Request(Guid.NewGuid());
-        var expected = Dd.Correspondence.Features.Get.Result.Success(null);
+        var expected = Dd.Correspondence.Features.Get.Result.Success(AnOverview(request.CorrespondenceId));
         _get.Handle(request).Returns(expected);
 
         var result = await _sut.Get(request);
@@ -130,5 +130,33 @@ public class DdCorrespondenceServiceTests
             IgnoreReservation = false,
             VisibleDateTime = DateTime.UtcNow.AddHours(1),
         };
+    }
+
+    private static Dd.Correspondence.Features.Get.CorrespondenceOverview AnOverview(Guid correspondenceId)
+    {
+        return new Dd.Correspondence.Features.Get.CorrespondenceOverview(
+            ResourceId: "test-resource",
+            SendersReference: "test-reference",
+            MessageSender: null,
+            Content: null,
+            RequestedPublishTime: null,
+            AllowSystemDeleteAfter: null,
+            DueDateTime: null,
+            ExternalReferences: null,
+            PropertyList: null,
+            ReplyOptions: null,
+            Notification: null,
+            IgnoreReservation: null,
+            Published: null,
+            IsConfirmationNeeded: false,
+            IsConfidential: false,
+            Recipient: "test-recipient",
+            CorrespondenceId: correspondenceId,
+            Created: DateTimeOffset.UtcNow,
+            Status: Dd.Correspondence.Features.Get.CorrespondenceStatus.Published,
+            StatusText: null,
+            StatusChanged: DateTimeOffset.UtcNow,
+            Notifications: null,
+            Altinn2CorrespondenceId: null);
     }
 }

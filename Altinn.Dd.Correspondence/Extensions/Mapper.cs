@@ -19,7 +19,7 @@ internal static class Mapper
             CorrespondenceId: e.CorrespondenceId,
             Status: (CorrespondenceStatus)e.Status,
             Recipient: e.Recipient,
-            Notifications: e.Notifications?.Select(ToDto)?.ToList()
+            Notifications: e.Notifications?.Select(ToDto).ToList()
         );
     }
 
@@ -41,9 +41,9 @@ internal static class Mapper
             RequestedPublishTime: e.RequestedPublishTime,
             AllowSystemDeleteAfter: e.AllowSystemDeleteAfter,
             DueDateTime: e.DueDateTime,
-            ExternalReferences: e.ExternalReferences?.Select(ToDto)?.ToList(),
+            ExternalReferences: e.ExternalReferences?.Select(ToDto).ToList(),
             PropertyList: e.PropertyList,
-            ReplyOptions: e.ReplyOptions?.Select(ToDto)?.ToList(),
+            ReplyOptions: e.ReplyOptions?.Select(ToDto).ToList(),
             Notification: e.Notification?.ToDto(),
             IgnoreReservation: e.IgnoreReservation,
             Published: e.Published,
@@ -55,7 +55,7 @@ internal static class Mapper
             Status: (Features.Get.CorrespondenceStatus)e.Status,
             StatusText: e.StatusText,
             StatusChanged: e.StatusChanged,
-            Notifications: e.Notifications?.Select(ToDto)?.ToList(),
+            Notifications: e.Notifications?.Select(ToDto).ToList(),
             Altinn2CorrespondenceId: e.Altinn2CorrespondenceId);
     }
 
@@ -66,7 +66,7 @@ internal static class Mapper
             MessageTitle: e.MessageTitle,
             MessageSummary: e.MessageSummary,
             MessageBody: e.MessageBody,
-            Attachments: e.Attachments?.Select(ToDto)?.ToList());
+            Attachments: e.Attachments?.Select(ToDto).ToList());
     }
 
     public static Features.Get.CorrespondenceAttachment ToDto(this CorrespondenceAttachmentExt e)
@@ -118,7 +118,7 @@ internal static class Mapper
             ReminderNotificationChannel: (Features.Get.NotificationChannel)e.ReminderNotificationChannel,
             SendersReference: e.SendersReference,
             RequestedSendTime: e.RequestedSendTime,
-            CustomRecipients: e.CustomRecipients?.Select(ToDto)?.ToList(),
+            CustomRecipients: e.CustomRecipients?.Select(ToDto).ToList(),
             CustomRecipient: e.CustomRecipient?.ToDto(),
             OverrideRegisteredContactInformation: e.OverrideRegisteredContactInformation);
     }

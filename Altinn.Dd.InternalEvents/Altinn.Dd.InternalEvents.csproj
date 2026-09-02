@@ -6,4 +6,27 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <PackageId>Altinn.Dd.InternalEvents</PackageId>
+    <!-- Last released version. The release workflow overrides it from the
+         internalevents-v* tag; this value only decides what a local pack produces. -->
+    <Version>2.5.0</Version>
+    <Authors>Digitaliseringsdirektoratet</Authors>
+    <Company>Digitaliseringsdirektoratet</Company>
+    <PackageTags>digdir;altinn;oed;digitalt dødsbo;events</PackageTags>
+    <Description>
+      Shared contract for the internal events published in Digitalt dødsbo: event type names,
+      resource ids, and the event payload models
+    </Description>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/altinn/oed-messaging</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/altinn/oed-messaging</PackageProjectUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
 </Project>

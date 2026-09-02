@@ -110,7 +110,7 @@ internal class Handler : IHandler<DdCorrespondenceDetails, CorrespondenceResult>
         {
             notification.NotificationChannel = NotificationChannelExt.Email;
         }
-        else if (hasSmsNotification)
+        else
         {
             notification.NotificationChannel = NotificationChannelExt.Sms;
         }
