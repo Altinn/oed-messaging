@@ -4,16 +4,16 @@ using Altinn.Dd.Correspondence.HttpClients;
 using Altinn.Dd.Correspondence.Models;
 using Altinn.Dd.Correspondence.Options;
 using Altinn.Dd.Correspondence.Services;
+using Altinn.Dd.Correspondence.Tests.TestSupport;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http;
 using RichardSzalay.MockHttp;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
-namespace Altinn.Oed.Correspondence.Tests.Services;
+namespace Altinn.Dd.Correspondence.Tests.Services;
 
 public class DdCorrespondenceServiceIntegrationTests
 {
@@ -30,29 +30,7 @@ public class DdCorrespondenceServiceIntegrationTests
         mockHttp.When(HttpMethod.Post, "https://platform.tt02.altinn.no/correspondence/api/v1/correspondence")
                 .Respond("application/json", JsonSerializer.Serialize(receipt));
 
-        mockHttp.When(HttpMethod.Get, "*/.well-known/oauth-authorization-server")
-                .Respond("application/json", JsonSerializer.Serialize(new
-                {
-                    issuer = "https://test.maskinporten.no/",
-                    token_endpoint = "https://test.maskinporten.no/token"
-                }));
-        // authentication/api/v1/exchange/maskinporten
-
-        var tokenResponse = new
-        {
-            access_token = "dummy-integration-test-token",
-            token_type = "Bearer",
-            expires_in = 3599,
-            scope = "altinn:serviceowner/correspondence.write"
-        };
-
-        mockHttp.When(HttpMethod.Post, "*/token")
-            .Respond("application/json", JsonSerializer.Serialize(tokenResponse));
-
-        var altinnTokenResponse = GenerateEncodedTestJwk();
-
-        mockHttp.When(HttpMethod.Get, "https://platform.tt02.altinn.no/authentication/api/v1/exchange/maskinporten")
-                .Respond("application/json", JsonSerializer.Serialize(altinnTokenResponse));
+        mockHttp.StubTokenExchange();
 
         using var host = Host.CreateDefaultBuilder()
             .ConfigureAppConfiguration((ctx, builder) =>
@@ -63,7 +41,7 @@ public class DdCorrespondenceServiceIntegrationTests
                     MaskinportenSettings = new MaskinportenSettings
                     {
                         ClientId = "test-client-id",
-                        EncodedJwk = GenerateEncodedTestJwk(),
+                        EncodedJwk = MaskinportenStub.GenerateEncodedTestJwk(),
                         Environment = "test"
                     },
                     Environment = ApiEnvironment.Development
@@ -101,36 +79,8 @@ public class DdCorrespondenceServiceIntegrationTests
         var result = await service.SendCorrespondence(details);
 
         Assert.True(result.IsSuccess, $"Failed with error: {result.Error}");
-        Assert.Equal(details.IdempotencyKey, result.Receipt!.IdempotencyKey);
+        Assert.Equal(details.IdempotencyKey, result.Value!.IdempotencyKey);
 
         mockHttp.VerifyNoOutstandingExpectation();
     }
-
-    private static string GenerateEncodedTestJwk()
-    {
-        using var rsa = RSA.Create(2048);
-        var p = rsa.ExportParameters(true);
-
-        var jwk = new
-        {
-            kty = "RSA",
-            use = "sig",
-            kid = "test-key",
-            alg = "RS256",
-            n = Base64Url(p.Modulus!),
-            e = Base64Url(p.Exponent!),
-            d = Base64Url(p.D!),
-            p = Base64Url(p.P!),
-            q = Base64Url(p.Q!),
-            dp = Base64Url(p.DP!),
-            dq = Base64Url(p.DQ!),
-            qi = Base64Url(p.InverseQ!)
-        };
-
-        var json = JsonSerializer.Serialize(jwk);
-        return Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
-    }
-
-    private static string Base64Url(byte[] data) =>
-        Convert.ToBase64String(data).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 }

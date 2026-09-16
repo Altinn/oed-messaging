@@ -1,4 +1,4 @@
-﻿using Altinn.Dd.Correspondence.HttpClients;
+using Altinn.Dd.Correspondence.HttpClients;
 using Altinn.Dd.Correspondence.Models;
 
 namespace Altinn.Dd.Correspondence.Extensions;
@@ -107,12 +107,12 @@ internal static class Mapper
             NotificationTemplate: (Features.Get.NotificationTemplate)e.NotificationTemplate,
             EmailSubject: e.EmailSubject,
             EmailBody: e.EmailBody,
-            EmailContentType: (Features.Get.EmailContentType)e.EmailContentType,
+            EmailContentType: e.EmailContentType,
             SmsBody: e.SmsBody,
             SendReminder: e.SendReminder,
             ReminderEmailSubject: e.ReminderEmailSubject,
             ReminderEmailBody: e.ReminderEmailBody,
-            ReminderEmailContentType: (Features.Get.EmailContentType)e.ReminderEmailContentType,
+            ReminderEmailContentType: e.ReminderEmailContentType,
             ReminderSmsBody: e.ReminderSmsBody,
             NotificationChannel: (Features.Get.NotificationChannel)e.NotificationChannel,
             ReminderNotificationChannel: (Features.Get.NotificationChannel)e.ReminderNotificationChannel,

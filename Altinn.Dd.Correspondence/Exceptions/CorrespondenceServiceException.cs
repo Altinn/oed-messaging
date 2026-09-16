@@ -1,8 +1,17 @@
 namespace Altinn.Dd.Correspondence.Exceptions;
 
 /// <summary>
-/// Exception thrown when errors occur in the Altinn 3 Correspondence service
+/// Thrown when a correspondence request is rejected before Altinn produced a response - the
+/// request timed out, the circuit breaker is open, or the concurrency limit was reached.
 /// </summary>
+/// <remarks>
+/// The resilience pipeline raises these as Polly exceptions. They are translated here so callers
+/// can handle them without referencing Polly, and so the library's public surface does not depend
+/// on which resilience implementation is in use.
+///
+/// An API rejection that carries a problem document is returned as a failure result instead; see
+/// the package README for which statuses take which route.
+/// </remarks>
 public class CorrespondenceServiceException : Exception
 {
     /// <summary>

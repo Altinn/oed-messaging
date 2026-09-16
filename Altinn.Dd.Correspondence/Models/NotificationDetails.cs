@@ -24,5 +24,9 @@ public class NotificationDetails
     /// </summary>
     public string? EmailBody { get; set; }
 
-    public EmailContentType EmailContentType { get; set; } = EmailContentType.Plain;
+    /// <summary>
+    /// Gets or sets how <see cref="EmailBody"/> should be interpreted. Defaults to
+    /// <see cref="HttpClients.EmailContentType.Plain"/>.
+    /// </summary>
+    public HttpClients.EmailContentType EmailContentType { get; set; } = HttpClients.EmailContentType.Plain;
 }

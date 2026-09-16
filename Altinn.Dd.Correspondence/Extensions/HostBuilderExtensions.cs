@@ -11,18 +11,30 @@ using Altinn.Dd.Correspondence.Options.Validators;
 using Altinn.Dd.Correspondence.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
 using Polly;
-using System.Net;
-using System.Net.Sockets;
 
 namespace Altinn.Dd.Correspondence.Extensions;
 
+/// <summary>
+/// Registration helpers that wire the correspondence client, its Maskinporten authentication and
+/// its resilience pipeline into a service collection.
+/// </summary>
 public static class ServiceCollectionExtensions
 {
     private const string CorrespondenceScope = "altinn:serviceowner altinn:correspondence.write altinn:correspondence.read";
     private const int RetryCount = 3;
 
+    /// <summary>
+    /// Registers <see cref="Services.IDdCorrespondenceService"/>, binding its options from the
+    /// given configuration section.
+    /// </summary>
+    /// <param name="services">The service collection to add to.</param>
+    /// <param name="configSectionPath">Configuration section holding the correspondence options,
+    /// for example <c>"DdConfig"</c>.</param>
+    /// <param name="configureOptions">Optional callback to adjust the bound options.</param>
+    /// <returns>The same service collection, so calls can be chained.</returns>
     public static IServiceCollection AddDdCorrespondenceService(
         this IServiceCollection services,
         string configSectionPath,
@@ -34,6 +46,13 @@ public static class ServiceCollectionExtensions
         return AddDdCorrespondenceServiceInternal(services, configureOptions);
     }
 
+    /// <summary>
+    /// Registers <see cref="Services.IDdCorrespondenceService"/>, configuring its options in code
+    /// rather than binding them from configuration.
+    /// </summary>
+    /// <param name="services">The service collection to add to.</param>
+    /// <param name="configureOptions">Callback that supplies the correspondence options.</param>
+    /// <returns>The same service collection, so calls can be chained.</returns>
     public static IServiceCollection AddDdCorrespondenceService(
         this IServiceCollection services,
         Action<DdCorrespondenceOptions>? configureOptions = null)
@@ -60,9 +79,9 @@ public static class ServiceCollectionExtensions
         correspondenceOptions.MaskinportenSettings.Scope = CorrespondenceScope;
         correspondenceOptions.MaskinportenSettings.ExhangeToAltinnToken = true;
 
-        services.AddTransient<IHandler<DdCorrespondenceDetails, CorrespondenceResult>, Features.Send.Handler>();
-        services.AddTransient<IHandler<Query, Features.Search.Result>, Features.Search.Handler>();
-        services.AddTransient<IHandler<Request, Features.Get.Result>, Features.Get.Handler>();
+        services.AddTransient<IHandler<DdCorrespondenceDetails, Result<ReceiptExternal>>, Features.Send.Handler>();
+        services.AddTransient<IHandler<Query, Result<IEnumerable<Guid>>>, Features.Search.Handler>();
+        services.AddTransient<IHandler<Request, Result<CorrespondenceOverview>>, Features.Get.Handler>();
         services.AddTransient<IDdCorrespondenceService, DdCorrespondenceService>();
 
         ConfigureMaskinportenHttpClient(services, correspondenceOptions);
@@ -82,7 +101,7 @@ public static class ServiceCollectionExtensions
             _ => throw new InvalidOperationException("MaskinportenSettings must specify either EncodedJwk or EncodedX509.")
         };
 
-        maskinportenHttpClient!.AddHttpMessageHandler(() => new AsyncPolicyDelegatingHandler(CreateRetryPolicy()))
+        maskinportenHttpClient!
             .ConfigureHttpClient(httpClient =>
             {
                 httpClient.BaseAddress = correspondenceOptions.Environment switch
@@ -92,43 +111,30 @@ public static class ServiceCollectionExtensions
                     ApiEnvironment.Production => ApiEndpoints.PlatformProduction,
                     _ => throw new ArgumentOutOfRangeException($"Unknown environment: {correspondenceOptions.Environment}")
                 };
-            });
-    }
-
-    private static IAsyncPolicy<HttpResponseMessage> CreateRetryPolicy()
-    {
-        return Policy<HttpResponseMessage>
-            .Handle<HttpRequestException>()
-            .Or<TaskCanceledException>()
-            .Or<SocketException>()
-            .OrResult(response =>
-                response.StatusCode == HttpStatusCode.RequestTimeout ||
-                response.StatusCode == HttpStatusCode.TooManyRequests ||
-                (int)response.StatusCode >= 500)
-            .WaitAndRetryAsync(
-                RetryCount,
-                retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
-    }
-
-    private sealed class AsyncPolicyDelegatingHandler : DelegatingHandler
-    {
-        private readonly IAsyncPolicy<HttpResponseMessage> _policy;
-
-        public AsyncPolicyDelegatingHandler(IAsyncPolicy<HttpResponseMessage> policy)
-        {
-            _policy = policy ?? throw new ArgumentNullException(nameof(policy));
-        }
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            if (request == null)
+            })
+            .AddStandardResilienceHandler(options =>
             {
-                throw new ArgumentNullException(nameof(request));
-            }
+                // Retry 408, 429 and 5xx, plus transport failures, with exponential backoff.
+                // Jitter spreads retries so parallel callers do not resynchronise on a bad minute.
+                options.Retry.MaxRetryAttempts = RetryCount;
+                options.Retry.BackoffType = DelayBackoffType.Exponential;
+                options.Retry.Delay = TimeSpan.FromSeconds(2);
+                options.Retry.UseJitter = true;
 
-            return _policy.ExecuteAsync(
-                (ct) => base.SendAsync(request, ct),
-                cancellationToken);
-        }
+                // The standard pipeline adds timeouts the previous hand-rolled policy did not
+                // have, so these are sized not to fail calls that used to succeed. Before 3.0.0
+                // there was no per-attempt timeout at all and the ceiling was HttpClient's 100s
+                // default; the total below keeps that ceiling.
+                //
+                // A slow-but-healthy Altinn is the case to protect: 10s was too tight for a large
+                // correspondence body. Note that 4 attempts at 30s exceed the total, so against a
+                // persistently slow endpoint the total timeout ends the call before the retry
+                // budget is spent - which is the intended ordering.
+                options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(30);
+                options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(100);
+
+                // Sampling must span at least twice the attempt timeout.
+                options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(60);
+            });
     }
 }

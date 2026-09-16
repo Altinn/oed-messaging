@@ -1,4 +1,3 @@
-﻿using Altinn.Dd.Correspondence.Options;
 using Microsoft.Extensions.Options;
 
 namespace Altinn.Dd.Correspondence.Options.Validators;

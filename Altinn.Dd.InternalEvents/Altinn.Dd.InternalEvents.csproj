@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -8,9 +8,10 @@
 
   <PropertyGroup>
     <PackageId>Altinn.Dd.InternalEvents</PackageId>
-    <!-- Last released version. The release workflow overrides it from the
-         internalevents-v* tag; this value only decides what a local pack produces. -->
-    <Version>2.5.0</Version>
+    <!-- Version a local pack produces. The release workflow overrides it from the
+         internalevents-v* tag, so this only needs to track what is being prepared.
+         2.5.1 because the only change is XML documentation - no API change. -->
+    <Version>2.5.1</Version>
     <Authors>Digitaliseringsdirektoratet</Authors>
     <Company>Digitaliseringsdirektoratet</Company>
     <PackageTags>digdir;altinn;oed;digitalt dødsbo;events</PackageTags>

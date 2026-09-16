@@ -9,7 +9,10 @@
   
   <PropertyGroup>
     <PackageId>Altinn.Dd.Correspondence</PackageId>
-    <Version>1.0.1</Version>
+    <!-- Version a local pack produces. The release workflow overrides it from the
+         correspondence-v* tag, so this only needs to track what is being prepared.
+         3.0.0 because two public types changed incompatibly - see the README. -->
+    <Version>3.0.0</Version>
     <Authors>Digitaliseringsdirektoratet</Authors>
     <Company>Digitaliseringsdirektoratet</Company>
     <PackageTags>digdir;altinn;oed;digitalt dødsbo</PackageTags>
@@ -25,11 +28,9 @@
 
   <ItemGroup>
     <PackageReference Include="Altinn.ApiClients.Maskinporten" Version="10.1.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.*" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.*" />
-    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="10.0.*" />
-    <PackageReference Include="Polly" Version="8.7.0" />
-    <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.10.0" />
   </ItemGroup>
 
   <ItemGroup>

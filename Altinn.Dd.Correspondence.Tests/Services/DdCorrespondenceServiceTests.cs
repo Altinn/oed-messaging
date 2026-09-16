@@ -1,162 +1,79 @@
-﻿using Altinn.Dd.Correspondence.Features;
+using Altinn.Dd.Correspondence.Features;
+using Altinn.Dd.Correspondence.Features.Get;
 using Altinn.Dd.Correspondence.Features.Search;
+using Altinn.Dd.Correspondence.HttpClients;
 using Altinn.Dd.Correspondence.Models;
 using Altinn.Dd.Correspondence.Services;
 using NSubstitute;
 
-namespace Altinn.Oed.Correspondence.Tests.Services;
+namespace Altinn.Dd.Correspondence.Tests.Services;
 
+/// <summary>
+/// DdCorrespondenceService is a thin facade: each method forwards to its handler and returns the
+/// handler's result untouched. These tests pin only that wiring - one handler per operation, no
+/// crossed wires. The behaviour behind each handler is covered by the handler's own tests.
+/// </summary>
 public class DdCorrespondenceServiceTests
 {
-    private readonly IHandler<DdCorrespondenceDetails, CorrespondenceResult> _send;
-    private readonly IHandler<Query, Dd.Correspondence.Features.Search.Result> _search;
-    private readonly IHandler<Dd.Correspondence.Features.Get.Request, Dd.Correspondence.Features.Get.Result> _get;
+    private readonly IHandler<DdCorrespondenceDetails, Result<ReceiptExternal>> _send =
+        Substitute.For<IHandler<DdCorrespondenceDetails, Result<ReceiptExternal>>>();
+
+    private readonly IHandler<Query, Result<IEnumerable<Guid>>> _search =
+        Substitute.For<IHandler<Query, Result<IEnumerable<Guid>>>>();
+
+    private readonly IHandler<Request, Result<CorrespondenceOverview>> _get =
+        Substitute.For<IHandler<Request, Result<CorrespondenceOverview>>>();
+
     private readonly DdCorrespondenceService _sut;
 
     public DdCorrespondenceServiceTests()
     {
-        _send = Substitute.For<IHandler<DdCorrespondenceDetails, CorrespondenceResult>>();
-        _search = Substitute.For<IHandler<Query, Dd.Correspondence.Features.Search.Result>>();
-        _get = Substitute.For<IHandler<Dd.Correspondence.Features.Get.Request, Dd.Correspondence.Features.Get.Result>>();
-
         _sut = new DdCorrespondenceService(_send, _search, _get);
     }
 
     [Fact]
-    public async Task SendCorrespondence_WithValidDetails_ShouldSucceed()
+    public async Task SendCorrespondence_ForwardsToTheSendHandlerAlone()
     {
-        var recipient = "test-recipient";
-        var correspondence = ValidCorrespondenceDetails(recipient);
-        var expectedReceipt = new ReceiptExternal(
-            InitalizedCorrespondences: new InitializedCorrespondences([], []),
-            IdempotencyKey: correspondence.IdempotencyKey,
-            SendersReference: correspondence.SendersReference!);
+        var details = new DdCorrespondenceDetails { Recipient = "987654321" };
+        var expected = Result<ReceiptExternal>.Success(new ReceiptExternal(
+            new InitializedCorrespondences([], []), details.IdempotencyKey, "caller-reference"));
+        _send.Handle(details).Returns(expected);
 
-        _send.Handle(correspondence).Returns(CorrespondenceResult.Success(expectedReceipt));
+        var result = await _sut.SendCorrespondence(details);
 
-        var result = await _sut.SendCorrespondence(correspondence);
-
-        Assert.True(result.IsSuccess);
-        Assert.NotNull(result.Receipt);
-        Assert.Equal(correspondence.IdempotencyKey, result.Receipt.IdempotencyKey);
-        Assert.Equal(correspondence.SendersReference, result.Receipt.SendersReference);
+        Assert.Same(expected, result);
+        await _send.Received(1).Handle(details);
+        await _search.DidNotReceiveWithAnyArgs().Handle(default!);
+        await _get.DidNotReceiveWithAnyArgs().Handle(default!);
     }
 
     [Fact]
-    public async Task SendCorrespondence_400BadRequest_FailureResult()
+    public async Task Search_ForwardsToTheSearchHandlerAlone()
     {
-        var correspondence = ValidCorrespondenceDetails(string.Empty);
-        _send.Handle(correspondence).Returns(CorrespondenceResult.Failure("Bad request"));
-
-        var result = await _sut.SendCorrespondence(correspondence);
-
-        Assert.True(result.IsFailure);
-    }
-
-    [Fact]
-    public async Task Search_ShouldInvokeHandlerAndReturnResult()
-    {
-        var query = new Query();
-        var expected = Dd.Correspondence.Features.Search.Result.Success([Guid.NewGuid()]);
+        var query = new Query(ResourceId: "oed-correspondence", Role: CorrespondencesRoleType.Sender);
+        var expected = Result<IEnumerable<Guid>>.Success([Guid.NewGuid()]);
         _search.Handle(query).Returns(expected);
 
         var result = await _sut.Search(query);
 
         Assert.Same(expected, result);
         await _search.Received(1).Handle(query);
+        await _send.DidNotReceiveWithAnyArgs().Handle(default!);
+        await _get.DidNotReceiveWithAnyArgs().Handle(default!);
     }
 
     [Fact]
-    public async Task Search_WhenHandlerReturnsFailure_ShouldReturnSameFailure()
+    public async Task Get_ForwardsToTheGetHandlerAlone()
     {
-        var query = new Query();
-        var expected = Dd.Correspondence.Features.Search.Result.Failure("Search failed");
-        _search.Handle(query).Returns(expected);
-
-        var result = await _sut.Search(query);
-
-        Assert.Same(expected, result);
-        Assert.True(result.IsFailure);
-        Assert.Equal("Search failed", result.Error);
-    }
-
-    [Fact]
-    public async Task Get_ShouldInvokeHandlerAndReturnResult()
-    {
-        var request = new Dd.Correspondence.Features.Get.Request(Guid.NewGuid());
-        var expected = Dd.Correspondence.Features.Get.Result.Success(AnOverview(request.CorrespondenceId));
+        var request = new Request(Guid.NewGuid());
+        var expected = Result<CorrespondenceOverview>.Failure("Not found");
         _get.Handle(request).Returns(expected);
 
         var result = await _sut.Get(request);
 
         Assert.Same(expected, result);
         await _get.Received(1).Handle(request);
-    }
-
-    [Fact]
-    public async Task Get_WhenHandlerReturnsFailure_ShouldReturnSameFailure()
-    {
-        var request = new Dd.Correspondence.Features.Get.Request(Guid.NewGuid());
-        var expected = Dd.Correspondence.Features.Get.Result.Failure("Not found");
-        _get.Handle(request).Returns(expected);
-
-        var result = await _sut.Get(request);
-
-        Assert.Same(expected, result);
-        Assert.True(result.IsFailure);
-        Assert.Equal("Not found", result.Error);
-    }
-
-    private static DdCorrespondenceDetails ValidCorrespondenceDetails(string recipient)
-    {
-        return new DdCorrespondenceDetails
-        {
-            Body = "This is a test correspondence body.",
-            Notification = new NotificationDetails
-            {
-                EmailBody = "This is a test email body.",
-                EmailSubject = "Test Email Subject",
-                EmailContentType = Dd.Correspondence.Models.EmailContentType.Html,
-                SmsText = "Test SMS Text"
-            },
-            Recipient = recipient,
-            Sender = "test-sender",
-            SendersReference = "test-reference",
-            ShipmentDatetime = DateTime.UtcNow,
-            Summary = "Test Summary",
-            Title = "Test Title",
-            AllowForwarding = true,
-            IdempotencyKey = Guid.NewGuid(),
-            IgnoreReservation = false,
-            VisibleDateTime = DateTime.UtcNow.AddHours(1),
-        };
-    }
-
-    private static Dd.Correspondence.Features.Get.CorrespondenceOverview AnOverview(Guid correspondenceId)
-    {
-        return new Dd.Correspondence.Features.Get.CorrespondenceOverview(
-            ResourceId: "test-resource",
-            SendersReference: "test-reference",
-            MessageSender: null,
-            Content: null,
-            RequestedPublishTime: null,
-            AllowSystemDeleteAfter: null,
-            DueDateTime: null,
-            ExternalReferences: null,
-            PropertyList: null,
-            ReplyOptions: null,
-            Notification: null,
-            IgnoreReservation: null,
-            Published: null,
-            IsConfirmationNeeded: false,
-            IsConfidential: false,
-            Recipient: "test-recipient",
-            CorrespondenceId: correspondenceId,
-            Created: DateTimeOffset.UtcNow,
-            Status: Dd.Correspondence.Features.Get.CorrespondenceStatus.Published,
-            StatusText: null,
-            StatusChanged: DateTimeOffset.UtcNow,
-            Notifications: null,
-            Altinn2CorrespondenceId: null);
+        await _send.DidNotReceiveWithAnyArgs().Handle(default!);
+        await _search.DidNotReceiveWithAnyArgs().Handle(default!);
     }
 }
