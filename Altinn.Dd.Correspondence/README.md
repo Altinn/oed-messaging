@@ -63,7 +63,7 @@ services.AddDdCorrespondenceService("DdConfig");
 ```
 
 > `AddDdCorrespondenceService` enforces the required correspondence scopes and wires up a
-> Maskinporten-enabled `HttpClient` with Polly-based retries. Consumers only need to supply
+> Maskinporten-enabled `HttpClient` with the standard resilience pipeline. Consumers only need to supply
 > environment-specific credentials. Set `EnableDebugLogging` in configuration when troubleshooting.
 
 ### 4. Use the Service
@@ -107,7 +107,7 @@ public class MyService
 **What the library does for you:**
 - Automatic Maskinporten authentication via `Altinn.ApiClients.Maskinporten`
 - Hardcoded scopes for the correspondence API (no need to configure)
-- Resilient HTTP client with Polly retry policy (exponential backoff)
+- Resilient HTTP client: retries with jittered exponential backoff, timeouts and a circuit breaker
 - Automatic organization number formatting
 - Idempotency support to prevent duplicate messages
 
@@ -211,24 +211,27 @@ catch (Exception ex)
 }
 ```
 
-## Retry Logic
+## Resilience
 
-The service automatically retries failed requests with exponential backoff to handle transient
-network and API errors.
+The client is wrapped in the standard resilience pipeline from
+`Microsoft.Extensions.Http.Resilience`, so transient failures are retried and a struggling
+endpoint is backed away from rather than hammered.
 
-**Retry Configuration:**
+**Configuration:**
 - **Retry count**: 3 additional attempts (initial attempt + 3 retries)
-- **Backoff strategy**: Exponential (2s, 4s, 8s delays between retries)
-- **Retried exceptions/status codes**:
-  - `HttpRequestException`, `TaskCanceledException`, `SocketException`
-  - HTTP 408 (Request Timeout)
-  - HTTP 429 (Too Many Requests)
-  - HTTP 5xx status codes
+- **Backoff**: exponential from a 2s base, with jitter so parallel callers do not resynchronise
+- **Retried**: HTTP 408, 429 and 5xx, plus transport failures and attempt timeouts
+- **Attempt timeout**: 10s per try
+- **Total request timeout**: 60s, sized to cover the whole retry schedule
+- **Circuit breaker**: opens when a sustained share of calls fail, and short-circuits while open
 
-**Retry Behavior:**
+**Behaviour:**
 - Retries execute transparently without duplicate messages thanks to the API's idempotency keys
+- Responses from retried attempts are disposed, so retrying does not leak connections
 - After all retries are exhausted, the last response is handled as described in
   [Error Handling](#error-handling)
+- A request that exceeds the total timeout, or arrives while the breaker is open, throws rather
+  than returning a failure result
 
 ## Example Implementation
 
@@ -270,6 +273,13 @@ moves:
 an API rejection has always come back as a failure result, and transport errors surface as
 `AltinnCorrespondenceException`. Any `catch (CorrespondenceServiceException)` was already dead code
 and can be deleted; see [Error Handling](#error-handling) for what is actually thrown.
+
+The retry policy moved from a hand-rolled Polly handler to the standard pipeline in
+`Microsoft.Extensions.Http.Resilience`. Retry counts and backoff are unchanged apart from added
+jitter, and responses from retried attempts are now disposed instead of leaking their connection.
+It does add behaviour that was not there before: a 10s per-attempt timeout, a 60s total request
+timeout, and a circuit breaker. Those surface as exceptions, not failure results — see
+[Resilience](#resilience).
 
 Everything else is additive: the package now ships XML documentation, so the public surface shows
 up in IntelliSense.

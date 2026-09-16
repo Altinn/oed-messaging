@@ -11,16 +11,15 @@ using Altinn.Dd.Correspondence.Options.Validators;
 using Altinn.Dd.Correspondence.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
 using Polly;
-using System.Net;
-using System.Net.Sockets;
 
 namespace Altinn.Dd.Correspondence.Extensions;
 
 /// <summary>
 /// Registration helpers that wire the correspondence client, its Maskinporten authentication and
-/// its retry policy into a service collection.
+/// its resilience pipeline into a service collection.
 /// </summary>
 public static class ServiceCollectionExtensions
 {
@@ -102,7 +101,7 @@ public static class ServiceCollectionExtensions
             _ => throw new InvalidOperationException("MaskinportenSettings must specify either EncodedJwk or EncodedX509.")
         };
 
-        maskinportenHttpClient!.AddHttpMessageHandler(() => new AsyncPolicyDelegatingHandler(CreateRetryPolicy()))
+        maskinportenHttpClient!
             .ConfigureHttpClient(httpClient =>
             {
                 httpClient.BaseAddress = correspondenceOptions.Environment switch
@@ -112,40 +111,24 @@ public static class ServiceCollectionExtensions
                     ApiEnvironment.Production => ApiEndpoints.PlatformProduction,
                     _ => throw new ArgumentOutOfRangeException($"Unknown environment: {correspondenceOptions.Environment}")
                 };
+            })
+            .AddStandardResilienceHandler(options =>
+            {
+                // Retry 408, 429 and 5xx, plus transport failures, with exponential backoff.
+                // Jitter spreads retries so parallel callers do not resynchronise on a bad minute.
+                options.Retry.MaxRetryAttempts = RetryCount;
+                options.Retry.BackoffType = DelayBackoffType.Exponential;
+                options.Retry.Delay = TimeSpan.FromSeconds(2);
+                options.Retry.UseJitter = true;
+
+                // The standard pipeline adds timeouts the previous hand-rolled policy did not
+                // have. The total has to cover the whole retry schedule or it cancels mid-way:
+                // 4 attempts at up to AttemptTimeout each, plus roughly 2s + 4s + 8s of backoff.
+                options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(10);
+                options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(60);
+
+                // Sampling must span at least twice the attempt timeout.
+                options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(30);
             });
-    }
-
-    private static IAsyncPolicy<HttpResponseMessage> CreateRetryPolicy()
-    {
-        return Policy<HttpResponseMessage>
-            .Handle<HttpRequestException>()
-            .Or<TaskCanceledException>()
-            .Or<SocketException>()
-            .OrResult(response =>
-                response.StatusCode == HttpStatusCode.RequestTimeout ||
-                response.StatusCode == HttpStatusCode.TooManyRequests ||
-                (int)response.StatusCode >= 500)
-            .WaitAndRetryAsync(
-                RetryCount,
-                retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
-    }
-
-    private sealed class AsyncPolicyDelegatingHandler : DelegatingHandler
-    {
-        private readonly IAsyncPolicy<HttpResponseMessage> _policy;
-
-        public AsyncPolicyDelegatingHandler(IAsyncPolicy<HttpResponseMessage> policy)
-        {
-            _policy = policy ?? throw new ArgumentNullException(nameof(policy));
-        }
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            ArgumentNullException.ThrowIfNull(request);
-
-            return _policy.ExecuteAsync(
-                (ct) => base.SendAsync(request, ct),
-                cancellationToken);
-        }
     }
 }
