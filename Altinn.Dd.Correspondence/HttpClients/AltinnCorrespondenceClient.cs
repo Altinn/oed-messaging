@@ -3534,7 +3534,12 @@ namespace Altinn.Dd.Correspondence.HttpClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    internal enum CorrespondencesRoleType
+    // HAND-EDITED: made public so the public Search query can expose it directly instead of the
+    // library keeping a duplicate copy. NSwag's typeAccessModifier is all-or-nothing, so
+    // regenerating this file from altinn_correspondence.nswag will reset this to "internal" and
+    // break the build on Features/Search/Query.cs (CS0051). Re-apply this modifier after any
+    // regeneration.
+    public enum CorrespondencesRoleType
     {
 
         [System.Runtime.Serialization.EnumMember(Value = @"Recipient")]

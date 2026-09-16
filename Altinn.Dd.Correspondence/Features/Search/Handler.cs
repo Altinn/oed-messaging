@@ -1,4 +1,4 @@
-﻿
+
 using Altinn.Dd.Correspondence.HttpClients;
 
 namespace Altinn.Dd.Correspondence.Features.Search;
@@ -34,7 +34,7 @@ internal class Handler : IHandler<Query, Result>
                 from: query.From,
                 to: query.To,
                 status: (CorrespondenceStatusExt?)query.Status,
-                role: (CorrespondencesRoleType?)query.Role,
+                role: query.Role,
                 onBehalfOf: query.OnBehalfOf,
                 sendersReference: query.SendersReference,
                 idempotentKey: query.IdempotencyKey);

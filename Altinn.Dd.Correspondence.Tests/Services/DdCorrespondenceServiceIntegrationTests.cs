@@ -13,7 +13,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
-namespace Altinn.Oed.Correspondence.Tests.Services;
+namespace Altinn.Dd.Correspondence.Tests;
 
 public class DdCorrespondenceServiceIntegrationTests
 {

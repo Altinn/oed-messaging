@@ -22,4 +22,17 @@
     <WarningsAsErrors>NU1903;NU1904</WarningsAsErrors>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <!-- Generate the XML documentation file. The published libraries ship it so consumers get
+         IntelliSense, and CS1591 keeps their public surface documented. It is also a prerequisite
+         for IDE0005 below: that analyser is silent at build time without it, which is why the
+         non-shipping projects generate the file too and just mute CS1591.
+
+         EnforceCodeStyleInBuild runs the IDE analysers as part of the build. Only the rules
+         explicitly raised in .editorconfig are reported; everything else stays at its default
+         severity and does not affect the build. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
 </Project>

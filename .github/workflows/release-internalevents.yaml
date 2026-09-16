@@ -1,4 +1,4 @@
-# Workflow for building and publishing Altinn.Oed.InternalEvents NuGet package
+# Workflow for building and publishing Altinn.Dd.InternalEvents NuGet package
 name: Release InternalEvents Package
 permissions:
   contents: read

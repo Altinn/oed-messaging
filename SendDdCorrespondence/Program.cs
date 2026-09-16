@@ -1,12 +1,11 @@
-﻿using Altinn.Dd.Correspondence.Models;
+using Altinn.Dd.Correspondence.Models;
 using Altinn.Dd.Correspondence.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Altinn.Dd.Correspondence.Services;
-using Altinn.Dd.Correspondence.Options;
-using Altinn.ApiClients.Maskinporten.Config;
 using Altinn.Dd.Correspondence.Features.Search;
+using Altinn.Dd.Correspondence.HttpClients;
 
 var configuration = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json")
@@ -19,6 +18,9 @@ var host = Host.CreateDefaultBuilder(args)
         // Eksempel 1
         services.AddDdCorrespondenceService("DdConfig");
 
+        // Eksempel 2 og 3 trenger disse i tillegg:
+        //   using Altinn.ApiClients.Maskinporten.Config;
+        //   using Altinn.Dd.Correspondence.Options;
         // Eksempel 2
         //services.AddDdCorrespondenceService("NavnetPåKonsumentSeksjonIAppsettings", options =>
         //{

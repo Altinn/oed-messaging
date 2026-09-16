@@ -18,11 +18,24 @@ using System.Net.Sockets;
 
 namespace Altinn.Dd.Correspondence.Extensions;
 
+/// <summary>
+/// Registration helpers that wire the correspondence client, its Maskinporten authentication and
+/// its retry policy into a service collection.
+/// </summary>
 public static class ServiceCollectionExtensions
 {
     private const string CorrespondenceScope = "altinn:serviceowner altinn:correspondence.write altinn:correspondence.read";
     private const int RetryCount = 3;
 
+    /// <summary>
+    /// Registers <see cref="Services.IDdCorrespondenceService"/>, binding its options from the
+    /// given configuration section.
+    /// </summary>
+    /// <param name="services">The service collection to add to.</param>
+    /// <param name="configSectionPath">Configuration section holding the correspondence options,
+    /// for example <c>"DdConfig"</c>.</param>
+    /// <param name="configureOptions">Optional callback to adjust the bound options.</param>
+    /// <returns>The same service collection, so calls can be chained.</returns>
     public static IServiceCollection AddDdCorrespondenceService(
         this IServiceCollection services,
         string configSectionPath,
@@ -34,6 +47,13 @@ public static class ServiceCollectionExtensions
         return AddDdCorrespondenceServiceInternal(services, configureOptions);
     }
 
+    /// <summary>
+    /// Registers <see cref="Services.IDdCorrespondenceService"/>, configuring its options in code
+    /// rather than binding them from configuration.
+    /// </summary>
+    /// <param name="services">The service collection to add to.</param>
+    /// <param name="configureOptions">Callback that supplies the correspondence options.</param>
+    /// <returns>The same service collection, so calls can be chained.</returns>
     public static IServiceCollection AddDdCorrespondenceService(
         this IServiceCollection services,
         Action<DdCorrespondenceOptions>? configureOptions = null)
@@ -121,10 +141,7 @@ public static class ServiceCollectionExtensions
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            if (request == null)
-            {
-                throw new ArgumentNullException(nameof(request));
-            }
+            ArgumentNullException.ThrowIfNull(request);
 
             return _policy.ExecuteAsync(
                 (ct) => base.SendAsync(request, ct),

@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using Altinn.Dd.Tests.DependencyGate;
 using Xunit;
 using Xunit.Abstractions;

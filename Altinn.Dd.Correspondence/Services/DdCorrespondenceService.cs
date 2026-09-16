@@ -1,10 +1,13 @@
-using Altinn.Dd.Correspondence.Exceptions;
 using Altinn.Dd.Correspondence.Features;
 using Altinn.Dd.Correspondence.Features.Search;
 using Altinn.Dd.Correspondence.Models;
 
 namespace Altinn.Dd.Correspondence.Services;
 
+/// <summary>
+/// Sends, searches and retrieves Altinn 3 correspondence. Register an implementation with
+/// <see cref="Extensions.ServiceCollectionExtensions"/> and inject this interface.
+/// </summary>
 public interface IDdCorrespondenceService
 {
     /// <summary>
@@ -12,11 +15,22 @@ public interface IDdCorrespondenceService
     /// </summary>
     /// <param name="correspondence">The correspondence details including recipient, content, and notifications.</param>
     /// <returns>A receipt indicating whether the correspondence was successfully created.</returns>
-    /// <exception cref="CorrespondenceServiceException">Thrown when the correspondence creation fails.</exception>
+    /// <remarks>An API rejection is returned as a failure result rather than thrown. A duplicate
+    /// idempotency key (409) and any unexpected status still throw; see the package README.</remarks>
     Task<CorrespondenceResult> SendCorrespondence(DdCorrespondenceDetails correspondence);
 
+    /// <summary>
+    /// Finds the ids of correspondences matching a query.
+    /// </summary>
+    /// <param name="query">The search filters. ResourceId and Role are required.</param>
+    /// <returns>The matching correspondence ids, or a failure result.</returns>
     Task<Features.Search.Result> Search(Query query);
 
+    /// <summary>
+    /// Retrieves the overview of a single correspondence.
+    /// </summary>
+    /// <param name="request">The correspondence to retrieve.</param>
+    /// <returns>The correspondence overview, or a failure result.</returns>
     Task<Features.Get.Result> Get(Features.Get.Request request);
 }
 
@@ -31,6 +45,12 @@ public sealed class DdCorrespondenceService : IDdCorrespondenceService
     private readonly IHandler<Query, Features.Search.Result> _search;
     private readonly IHandler<Features.Get.Request, Features.Get.Result> _get;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DdCorrespondenceService"/> class.
+    /// </summary>
+    /// <param name="send">Handler for the send operation.</param>
+    /// <param name="search">Handler for the search operation.</param>
+    /// <param name="get">Handler for the get operation.</param>
     public DdCorrespondenceService(
         IHandler<DdCorrespondenceDetails, CorrespondenceResult> send,
         IHandler<Query, Features.Search.Result> search,
@@ -45,9 +65,11 @@ public sealed class DdCorrespondenceService : IDdCorrespondenceService
     public Task<CorrespondenceResult> SendCorrespondence(DdCorrespondenceDetails correspondence)
         => _send.Handle(correspondence);
 
+    /// <inheritdoc />
     public Task<Features.Search.Result> Search(Query query)
         => _search.Handle(query);
 
+    /// <inheritdoc />
     public Task<Features.Get.Result> Get(Features.Get.Request request)
         => _get.Handle(request);
 }
