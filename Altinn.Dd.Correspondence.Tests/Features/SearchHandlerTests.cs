@@ -2,8 +2,10 @@ using Altinn.Dd.Correspondence.Features.Search;
 using Altinn.Dd.Correspondence.HttpClients;
 using Altinn.Dd.Correspondence.Models;
 using System.Net;
+using Altinn.Dd.Correspondence.Tests.TestSupport;
 
-namespace Altinn.Dd.Correspondence.Tests;
+
+namespace Altinn.Dd.Correspondence.Tests.Features;
 
 /// <summary>
 /// Covers the guard clauses and error translation in Features.Search.Handler. Role and ResourceId

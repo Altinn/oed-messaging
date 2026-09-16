@@ -1,11 +1,13 @@
 using Altinn.Dd.Correspondence.Features.Get;
 using Altinn.Dd.Correspondence.HttpClients;
 using System.Net;
+using Altinn.Dd.Correspondence.Tests.TestSupport;
 
-namespace Altinn.Dd.Correspondence.Tests;
+
+namespace Altinn.Dd.Correspondence.Tests.Features;
 
 /// <summary>
-/// Covers Features.Get.Handler: the round trip from a correspondence id to a mapped overview, and
+/// Covers CorrespondenceGet.Handler: the round trip from a correspondence id to a mapped overview, and
 /// the translation of an API problem document into a failure result.
 /// </summary>
 public class GetHandlerTests

@@ -1,11 +1,15 @@
 using Altinn.Dd.Correspondence.HttpClients;
 using Altinn.Dd.Correspondence.Models;
+using Altinn.Dd.Correspondence.Tests.TestSupport;
 using System.Net;
 
-namespace Altinn.Dd.Correspondence.Tests;
+using CorrespondenceSend = Altinn.Dd.Correspondence.Features.Send;
+using CorrespondenceModels = Altinn.Dd.Correspondence.Models;
+
+namespace Altinn.Dd.Correspondence.Tests.Features;
 
 /// <summary>
-/// Covers the logic in Features.Send.Handler - recipient formatting, notification assembly and
+/// Covers the logic in CorrespondenceSend.Handler - recipient formatting, notification assembly and
 /// error translation - by inspecting the request the handler actually puts on the wire.
 /// </summary>
 public class SendHandlerTests
@@ -34,7 +38,7 @@ public class SendHandlerTests
     private static async Task<(CorrespondenceResult Result, HandlerHarness Harness)> Send(DdCorrespondenceDetails details)
     {
         var harness = new HandlerHarness().RespondsWith(HttpMethod.Post, AnAcceptedResponse());
-        var sut = new Features.Send.Handler(harness.Client(), harness.Options());
+        var sut = new CorrespondenceSend.Handler(harness.Client(), harness.Options());
 
         return (await sut.Handle(details), harness);
     }
@@ -85,7 +89,7 @@ public class SendHandlerTests
         {
             EmailSubject = "Subject",
             EmailBody = "Body",
-            EmailContentType = Models.EmailContentType.Html
+            EmailContentType = CorrespondenceModels.EmailContentType.Html
         };
 
         var (_, harness) = await Send(details);
@@ -200,7 +204,7 @@ public class SendHandlerTests
     {
         using var harness = new HandlerHarness()
             .RespondsWithProblem(HttpMethod.Post, HttpStatusCode.BadRequest, "1020: Message title cannot be empty");
-        var sut = new Features.Send.Handler(harness.Client(), harness.Options());
+        var sut = new CorrespondenceSend.Handler(harness.Client(), harness.Options());
 
         var result = await sut.Handle(Details());
 
@@ -217,7 +221,7 @@ public class SendHandlerTests
         // exception instead of a failure result - documented in the package README.
         using var harness = new HandlerHarness()
             .RespondsWithProblem(HttpMethod.Post, HttpStatusCode.Conflict, "1034: duplicate idempotent key");
-        var sut = new Features.Send.Handler(harness.Client(), harness.Options());
+        var sut = new CorrespondenceSend.Handler(harness.Client(), harness.Options());
 
         var exception = await Assert.ThrowsAsync<AltinnCorrespondenceException>(() => sut.Handle(Details()));
 

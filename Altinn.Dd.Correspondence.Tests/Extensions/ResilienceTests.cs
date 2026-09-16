@@ -4,6 +4,7 @@ using Altinn.Dd.Correspondence.HttpClients;
 using Altinn.Dd.Correspondence.Models;
 using Altinn.Dd.Correspondence.Options;
 using Altinn.Dd.Correspondence.Services;
+using Altinn.Dd.Correspondence.Tests.TestSupport;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http;
@@ -13,7 +14,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 
-namespace Altinn.Dd.Correspondence.Tests;
+namespace Altinn.Dd.Correspondence.Tests.Extensions;
 
 /// <summary>
 /// Covers the resilience pipeline wired up by AddDdCorrespondenceService. These run through the

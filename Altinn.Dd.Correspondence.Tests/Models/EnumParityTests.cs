@@ -1,6 +1,9 @@
 using Altinn.Dd.Correspondence.HttpClients;
 
-namespace Altinn.Dd.Correspondence.Tests;
+using CorrespondenceGet = Altinn.Dd.Correspondence.Features.Get;
+using CorrespondenceModels = Altinn.Dd.Correspondence.Models;
+
+namespace Altinn.Dd.Correspondence.Tests.Models;
 
 /// <summary>
 /// The library keeps its own public copies of several enums so the generated client stays internal,
@@ -31,41 +34,41 @@ public class EnumParityTests
 
     [Fact]
     public void EmailContentType_MatchesTheGeneratedEnum() =>
-        AssertSameShape<Models.EmailContentType, EmailContentType>();
+        AssertSameShape<CorrespondenceModels.EmailContentType, EmailContentType>();
 
     [Fact]
     public void CorrespondenceStatus_MatchesTheGeneratedEnum() =>
-        AssertSameShape<Models.CorrespondenceStatus, CorrespondenceStatusExt>();
+        AssertSameShape<CorrespondenceModels.CorrespondenceStatus, CorrespondenceStatusExt>();
 
     [Fact]
     public void InitializedNotificationStatus_MatchesTheGeneratedEnum() =>
-        AssertSameShape<Models.InitializedNotificationStatus, InitializedNotificationStatusExt>();
+        AssertSameShape<CorrespondenceModels.InitializedNotificationStatus, InitializedNotificationStatusExt>();
 
     [Fact]
     public void GetCorrespondenceStatus_MatchesTheGeneratedEnum() =>
-        AssertSameShape<Features.Get.CorrespondenceStatus, CorrespondenceStatusExt>();
+        AssertSameShape<CorrespondenceGet.CorrespondenceStatus, CorrespondenceStatusExt>();
 
     [Fact]
     public void GetEmailContentType_MatchesTheGeneratedEnum() =>
-        AssertSameShape<Features.Get.EmailContentType, EmailContentType>();
+        AssertSameShape<CorrespondenceGet.EmailContentType, EmailContentType>();
 
     [Fact]
     public void GetNotificationChannel_MatchesTheGeneratedEnum() =>
-        AssertSameShape<Features.Get.NotificationChannel, NotificationChannelExt>();
+        AssertSameShape<CorrespondenceGet.NotificationChannel, NotificationChannelExt>();
 
     [Fact]
     public void GetNotificationTemplate_MatchesTheGeneratedEnum() =>
-        AssertSameShape<Features.Get.NotificationTemplate, NotificationTemplateExt>();
+        AssertSameShape<CorrespondenceGet.NotificationTemplate, NotificationTemplateExt>();
 
     [Fact]
     public void GetAttachmentStatus_MatchesTheGeneratedEnum() =>
-        AssertSameShape<Features.Get.AttachmentStatus, AttachmentStatusExt>();
+        AssertSameShape<CorrespondenceGet.AttachmentStatus, AttachmentStatusExt>();
 
     [Fact]
     public void GetAttachmentDataLocationType_MatchesTheGeneratedEnum() =>
-        AssertSameShape<Features.Get.AttachmentDataLocationType, AttachmentDataLocationTypeExt>();
+        AssertSameShape<CorrespondenceGet.AttachmentDataLocationType, AttachmentDataLocationTypeExt>();
 
     [Fact]
     public void GetReferenceType_MatchesTheGeneratedEnum() =>
-        AssertSameShape<Features.Get.ReferenceType, ReferenceTypeExt>();
+        AssertSameShape<CorrespondenceGet.ReferenceType, ReferenceTypeExt>();
 }

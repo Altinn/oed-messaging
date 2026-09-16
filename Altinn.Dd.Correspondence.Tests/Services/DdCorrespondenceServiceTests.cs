@@ -1,11 +1,10 @@
 using Altinn.Dd.Correspondence.Features;
-using Altinn.Dd.Correspondence.Features.Search;
 using Altinn.Dd.Correspondence.HttpClients;
 using Altinn.Dd.Correspondence.Models;
 using Altinn.Dd.Correspondence.Services;
 using NSubstitute;
 
-namespace Altinn.Dd.Correspondence.Tests;
+namespace Altinn.Dd.Correspondence.Tests.Services;
 
 /// <summary>
 /// DdCorrespondenceService is a thin facade: each method forwards to its handler and returns the
@@ -17,11 +16,11 @@ public class DdCorrespondenceServiceTests
     private readonly IHandler<DdCorrespondenceDetails, CorrespondenceResult> _send =
         Substitute.For<IHandler<DdCorrespondenceDetails, CorrespondenceResult>>();
 
-    private readonly IHandler<Query, Features.Search.Result> _search =
-        Substitute.For<IHandler<Query, Features.Search.Result>>();
+    private readonly IHandler<Correspondence.Features.Search.Query, Correspondence.Features.Search.Result> _search =
+        Substitute.For<IHandler<Correspondence.Features.Search.Query, Correspondence.Features.Search.Result>>();
 
-    private readonly IHandler<Features.Get.Request, Features.Get.Result> _get =
-        Substitute.For<IHandler<Features.Get.Request, Features.Get.Result>>();
+    private readonly IHandler<Correspondence.Features.Get.Request, Correspondence.Features.Get.Result> _get =
+        Substitute.For<IHandler<Correspondence.Features.Get.Request, Correspondence.Features.Get.Result>>();
 
     private readonly DdCorrespondenceService _sut;
 
@@ -49,8 +48,8 @@ public class DdCorrespondenceServiceTests
     [Fact]
     public async Task Search_ForwardsToTheSearchHandlerAlone()
     {
-        var query = new Query(ResourceId: "oed-correspondence", Role: CorrespondencesRoleType.Sender);
-        var expected = Features.Search.Result.Success([Guid.NewGuid()]);
+        var query = new Correspondence.Features.Search.Query(ResourceId: "oed-correspondence", Role: CorrespondencesRoleType.Sender);
+        var expected = Correspondence.Features.Search.Result.Success([Guid.NewGuid()]);
         _search.Handle(query).Returns(expected);
 
         var result = await _sut.Search(query);
@@ -64,8 +63,8 @@ public class DdCorrespondenceServiceTests
     [Fact]
     public async Task Get_ForwardsToTheGetHandlerAlone()
     {
-        var request = new Features.Get.Request(Guid.NewGuid());
-        var expected = Features.Get.Result.Failure("Not found");
+        var request = new Correspondence.Features.Get.Request(Guid.NewGuid());
+        var expected = Correspondence.Features.Get.Result.Failure("Not found");
         _get.Handle(request).Returns(expected);
 
         var result = await _sut.Get(request);

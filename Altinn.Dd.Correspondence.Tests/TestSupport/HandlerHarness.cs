@@ -8,7 +8,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 
-namespace Altinn.Dd.Correspondence.Tests;
+namespace Altinn.Dd.Correspondence.Tests.TestSupport;
 
 /// <summary>
 /// Builds a feature handler over a mocked transport, so the handler's own logic - recipient

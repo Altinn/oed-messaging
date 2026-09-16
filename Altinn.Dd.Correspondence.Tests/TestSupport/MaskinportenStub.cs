@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
-namespace Altinn.Dd.Correspondence.Tests;
+namespace Altinn.Dd.Correspondence.Tests.TestSupport;
 
 /// <summary>
 /// Stubs out the Maskinporten token exchange, so a test can drive the real DI pipeline without

@@ -64,6 +64,21 @@ These hold most of the value: each builds the real handler over a mocked transpo
 - **MaskinportenStub**: stubs the Maskinporten metadata, token and Altinn exchange calls, and
   generates a throwaway RSA JWK, so tests that need the whole DI stack run without credentials.
 
+## Namespaces
+
+Each folder has its own namespace under `Altinn.Dd.Correspondence.Tests`, which means
+`Tests.Features`, `Tests.Models` and `Tests.Extensions` shadow the library namespaces of the same
+name. Inside `Tests.Extensions`, a bare `Features.Get.CorrespondenceStatus` resolves to
+`Tests.Features` and fails to compile rather than reaching the library.
+
+Where a test needs one of the shadowed namespaces, alias it at the top of the file instead of
+writing the reference out in full:
+
+```csharp
+using CorrespondenceGet = Altinn.Dd.Correspondence.Features.Get;
+using CorrespondenceModels = Altinn.Dd.Correspondence.Models;
+```
+
 ## Running Tests
 
 ```bash

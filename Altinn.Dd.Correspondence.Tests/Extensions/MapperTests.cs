@@ -1,7 +1,10 @@
 using Altinn.Dd.Correspondence.Extensions;
 using Altinn.Dd.Correspondence.HttpClients;
 
-namespace Altinn.Dd.Correspondence.Tests;
+using CorrespondenceGet = Altinn.Dd.Correspondence.Features.Get;
+using CorrespondenceModels = Altinn.Dd.Correspondence.Models;
+
+namespace Altinn.Dd.Correspondence.Tests.Extensions;
 
 /// <summary>
 /// The mapper translates the generated wire contract into the public DTOs, including a pile of
@@ -46,12 +49,12 @@ public class MapperTests
         var correspondence = Assert.Single(dto.Correspondences);
         Assert.Equal(correspondenceId, correspondence.CorrespondenceId);
         Assert.Equal("0192:987654321", correspondence.Recipient);
-        Assert.Equal(Models.CorrespondenceStatus.Published, correspondence.Status);
+        Assert.Equal(CorrespondenceModels.CorrespondenceStatus.Published, correspondence.Status);
 
         var notification = Assert.Single(correspondence.Notifications!);
         Assert.Equal(orderId, notification.OrderId);
         Assert.True(notification.IsReminder);
-        Assert.Equal(Models.InitializedNotificationStatus.Success, notification.Status);
+        Assert.Equal(CorrespondenceModels.InitializedNotificationStatus.Success, notification.Status);
     }
 
     [Fact]
@@ -115,7 +118,7 @@ public class MapperTests
 
         Assert.Equal("oed-correspondence", dto.ResourceId);
         Assert.Equal(correspondenceId, dto.CorrespondenceId);
-        Assert.Equal(Features.Get.CorrespondenceStatus.Read, dto.Status);
+        Assert.Equal(CorrespondenceGet.CorrespondenceStatus.Read, dto.Status);
         Assert.True(dto.IgnoreReservation);
         Assert.Equal(42, dto.Altinn2CorrespondenceId);
         Assert.Equal("value", dto.PropertyList!["key"]);
@@ -124,11 +127,11 @@ public class MapperTests
         var attachment = Assert.Single(dto.Content.Attachments!);
         Assert.Equal(attachmentId, attachment.Id);
         Assert.Equal("file.pdf", attachment.FileName);
-        Assert.Equal(Features.Get.AttachmentDataLocationType.ExternalStorage, attachment.DataLocationType);
-        Assert.Equal(Features.Get.AttachmentStatus.Published, attachment.Status);
+        Assert.Equal(CorrespondenceGet.AttachmentDataLocationType.ExternalStorage, attachment.DataLocationType);
+        Assert.Equal(CorrespondenceGet.AttachmentStatus.Published, attachment.Status);
 
         var reference = Assert.Single(dto.ExternalReferences!);
-        Assert.Equal(Features.Get.ReferenceType.DialogportenDialogId, reference.ReferenceType);
+        Assert.Equal(CorrespondenceGet.ReferenceType.DialogportenDialogId, reference.ReferenceType);
 
         var replyOption = Assert.Single(dto.ReplyOptions!);
         Assert.Equal("Reply", replyOption.LinkText);
@@ -163,11 +166,11 @@ public class MapperTests
         var notification = overview.ToDto().Notification;
 
         Assert.NotNull(notification);
-        Assert.Equal(Features.Get.NotificationTemplate.CustomMessage, notification!.NotificationTemplate);
-        Assert.Equal(Features.Get.NotificationChannel.EmailAndSms, notification.NotificationChannel);
-        Assert.Equal(Features.Get.NotificationChannel.SmsPreferred, notification.ReminderNotificationChannel);
-        Assert.Equal(Features.Get.EmailContentType.Html, notification.EmailContentType);
-        Assert.Equal(Features.Get.EmailContentType.Plain, notification.ReminderEmailContentType);
+        Assert.Equal(CorrespondenceGet.NotificationTemplate.CustomMessage, notification!.NotificationTemplate);
+        Assert.Equal(CorrespondenceGet.NotificationChannel.EmailAndSms, notification.NotificationChannel);
+        Assert.Equal(CorrespondenceGet.NotificationChannel.SmsPreferred, notification.ReminderNotificationChannel);
+        Assert.Equal(CorrespondenceGet.EmailContentType.Html, notification.EmailContentType);
+        Assert.Equal(CorrespondenceGet.EmailContentType.Plain, notification.ReminderEmailContentType);
         Assert.True(notification.SendReminder);
         Assert.Equal("someone@example.test", notification.CustomRecipient!.EmailAddress);
     }
