@@ -6,22 +6,15 @@ using Microsoft.Extensions.Options;
 
 namespace Altinn.Dd.Correspondence.Features.Send;
 
-internal class Handler : IHandler<DdCorrespondenceDetails, CorrespondenceResult>
+internal class Handler(
+    AltinnCorrespondenceClient httpClient,
+    IOptionsMonitor<DdCorrespondenceOptions> optionsMonitor) : IHandler<DdCorrespondenceDetails, CorrespondenceResult>
 {
     private const string LanguageCode = "nb";
     private const string SenderReferencePrefix = "EXT_DD_SHIP_";
     private const string CountryCode = "0192";
 
-    private readonly DdCorrespondenceOptions _correspondenceOptions;
-    private readonly AltinnCorrespondenceClient _httpClient;
-
-    public Handler(
-        AltinnCorrespondenceClient httpClient,
-        IOptionsMonitor<DdCorrespondenceOptions> optionsMonitor)
-    {
-        _httpClient = httpClient;
-        _correspondenceOptions = optionsMonitor.CurrentValue;
-    }
+    private readonly DdCorrespondenceOptions _correspondenceOptions = optionsMonitor.CurrentValue;
 
     public async Task<CorrespondenceResult> Handle(DdCorrespondenceDetails correspondenceDetails)
     {
@@ -53,7 +46,7 @@ internal class Handler : IHandler<DdCorrespondenceDetails, CorrespondenceResult>
                 IdempotentKey = correspondenceDetails.IdempotencyKey
             };
 
-            var result = await _httpClient.CorrespondencePOSTAsync(correspondenceRequest);
+            var result = await httpClient.CorrespondencePOSTAsync(correspondenceRequest);
             var receipt = new ReceiptExternal(result.ToDto(), correspondenceDetails.IdempotencyKey, sendersReference);
             return CorrespondenceResult.Success(receipt);
         }
