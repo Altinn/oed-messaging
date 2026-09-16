@@ -26,7 +26,7 @@ public class NotificationDetails
 
     /// <summary>
     /// Gets or sets how <see cref="EmailBody"/> should be interpreted. Defaults to
-    /// <see cref="Models.EmailContentType.Plain"/>.
+    /// <see cref="HttpClients.EmailContentType.Plain"/>.
     /// </summary>
-    public EmailContentType EmailContentType { get; set; } = EmailContentType.Plain;
+    public HttpClients.EmailContentType EmailContentType { get; set; } = HttpClients.EmailContentType.Plain;
 }

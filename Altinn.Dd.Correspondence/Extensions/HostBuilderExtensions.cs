@@ -122,13 +122,19 @@ public static class ServiceCollectionExtensions
                 options.Retry.UseJitter = true;
 
                 // The standard pipeline adds timeouts the previous hand-rolled policy did not
-                // have. The total has to cover the whole retry schedule or it cancels mid-way:
-                // 4 attempts at up to AttemptTimeout each, plus roughly 2s + 4s + 8s of backoff.
-                options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(10);
-                options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(60);
+                // have, so these are sized not to fail calls that used to succeed. Before 3.0.0
+                // there was no per-attempt timeout at all and the ceiling was HttpClient's 100s
+                // default; the total below keeps that ceiling.
+                //
+                // A slow-but-healthy Altinn is the case to protect: 10s was too tight for a large
+                // correspondence body. Note that 4 attempts at 30s exceed the total, so against a
+                // persistently slow endpoint the total timeout ends the call before the retry
+                // budget is spent - which is the intended ordering.
+                options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(30);
+                options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(100);
 
                 // Sampling must span at least twice the attempt timeout.
-                options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(30);
+                options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(60);
             });
     }
 }

@@ -45,5 +45,9 @@ internal class Handler : IHandler<Query, Result>
         {
             return Result.Failure(e.Result.Detail);
         }
+        catch (Polly.ExecutionRejectedException e)
+        {
+            throw Exceptions.ResilienceFailure.Translate(e);
+        }
     }
 }

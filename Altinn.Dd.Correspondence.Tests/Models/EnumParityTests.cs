@@ -33,10 +33,6 @@ public class EnumParityTests
     }
 
     [Fact]
-    public void EmailContentType_MatchesTheGeneratedEnum() =>
-        AssertSameShape<CorrespondenceModels.EmailContentType, EmailContentType>();
-
-    [Fact]
     public void CorrespondenceStatus_MatchesTheGeneratedEnum() =>
         AssertSameShape<CorrespondenceModels.CorrespondenceStatus, CorrespondenceStatusExt>();
 
@@ -47,10 +43,6 @@ public class EnumParityTests
     [Fact]
     public void GetCorrespondenceStatus_MatchesTheGeneratedEnum() =>
         AssertSameShape<CorrespondenceGet.CorrespondenceStatus, CorrespondenceStatusExt>();
-
-    [Fact]
-    public void GetEmailContentType_MatchesTheGeneratedEnum() =>
-        AssertSameShape<CorrespondenceGet.EmailContentType, EmailContentType>();
 
     [Fact]
     public void GetNotificationChannel_MatchesTheGeneratedEnum() =>

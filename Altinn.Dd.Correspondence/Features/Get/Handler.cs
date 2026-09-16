@@ -1,4 +1,4 @@
-﻿using Altinn.Dd.Correspondence.Extensions;
+using Altinn.Dd.Correspondence.Extensions;
 using Altinn.Dd.Correspondence.HttpClients;
 
 namespace Altinn.Dd.Correspondence.Features.Get;
@@ -23,6 +23,10 @@ internal class Handler : IHandler<Request, Result>
         catch (AltinnCorrespondenceException<ProblemDetails> e)
         {
             return Result.Failure(e.Result.Detail);
+        }
+        catch (Polly.ExecutionRejectedException e)
+        {
+            throw Exceptions.ResilienceFailure.Translate(e);
         }
     }
 }

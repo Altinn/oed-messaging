@@ -181,7 +181,9 @@ exception — but only for the statuses the generated client documents for that 
 
 Anything not in the middle column — including a 5xx that outlives the retry policy, and a
 transport failure — surfaces as an exception, so keep a try/catch around the call as well as
-checking the result.
+checking the result. Rejections from the resilience pipeline arrive as
+`CorrespondenceServiceException`; everything else from the API arrives as
+`AltinnCorrespondenceException`.
 
 ```csharp
 try
@@ -221,8 +223,9 @@ endpoint is backed away from rather than hammered.
 - **Retry count**: 3 additional attempts (initial attempt + 3 retries)
 - **Backoff**: exponential from a 2s base, with jitter so parallel callers do not resynchronise
 - **Retried**: HTTP 408, 429 and 5xx, plus transport failures and attempt timeouts
-- **Attempt timeout**: 10s per try
-- **Total request timeout**: 60s, sized to cover the whole retry schedule
+- **Attempt timeout**: 30s per try
+- **Total request timeout**: 100s, matching the ceiling `HttpClient` applied before 3.0.0
+- **Concurrency limit**: 1000 in-flight requests, rejected rather than queued
 - **Circuit breaker**: opens when a sustained share of calls fail, and short-circuits while open
 
 **Behaviour:**
@@ -230,8 +233,12 @@ endpoint is backed away from rather than hammered.
 - Responses from retried attempts are disposed, so retrying does not leak connections
 - After all retries are exhausted, the last response is handled as described in
   [Error Handling](#error-handling)
-- A request that exceeds the total timeout, or arrives while the breaker is open, throws rather
-  than returning a failure result
+- A request that exceeds a timeout, arrives while the breaker is open, or exceeds the concurrency
+  limit throws `CorrespondenceServiceException` rather than returning a failure result. The
+  underlying Polly rejection is kept as `InnerException` for diagnosis, but callers never have to
+  reference Polly to catch it
+- Four attempts at 30s exceed the 100s total, so against a persistently slow endpoint the total
+  timeout ends the call before the retry budget is spent
 
 ## Example Implementation
 
@@ -255,31 +262,46 @@ This example serves as both a testing tool and a reference implementation for in
 
 ## Breaking changes in 3.0.0
 
-Two public types changed incompatibly. Both are compile-time failures, so nothing fails silently.
+### Two enums moved namespace
 
-**`CorrespondencesRoleType` moved namespace**, from `Altinn.Dd.Correspondence.Models` to
-`Altinn.Dd.Correspondence.HttpClients`. The library used to keep its own copy of the enum and cast
-between the two; there is now one. The members and their values are unchanged, so only the `using`
-moves:
+`CorrespondencesRoleType` and `EmailContentType` moved from `Altinn.Dd.Correspondence.Models` (and,
+for `EmailContentType`, also `Features.Get`) to `Altinn.Dd.Correspondence.HttpClients`. The library
+used to keep its own copies and cast between them; there is now one of each. Members and values are
+unchanged, so only the `using` moves:
 
 ```csharp
 -using Altinn.Dd.Correspondence.Models;
 +using Altinn.Dd.Correspondence.HttpClients;
 
  var query = new Query(ResourceId: "oed-correspondence", Role: CorrespondencesRoleType.Sender);
+ var notification = new NotificationDetails { EmailContentType = EmailContentType.Html };
 ```
 
-**`CorrespondenceServiceException` was removed.** It was never thrown by anything in the library —
-an API rejection has always come back as a failure result, and transport errors surface as
-`AltinnCorrespondenceException`. Any `catch (CorrespondenceServiceException)` was already dead code
-and can be deleted; see [Error Handling](#error-handling) for what is actually thrown.
+`NotificationDetails.EmailContentType` and the `EmailContentType` members of the Get overview now
+use that single type.
+
+### The resilience pipeline can fail calls that used to succeed
 
 The retry policy moved from a hand-rolled Polly handler to the standard pipeline in
 `Microsoft.Extensions.Http.Resilience`. Retry counts and backoff are unchanged apart from added
 jitter, and responses from retried attempts are now disposed instead of leaking their connection.
-It does add behaviour that was not there before: a 10s per-attempt timeout, a 60s total request
-timeout, and a circuit breaker. Those surface as exceptions, not failure results — see
+
+The pipeline also adds limits that did not exist before — a per-attempt timeout, a total request
+timeout, a circuit breaker and a concurrency limiter. **Before 3.0.0 there was no per-attempt
+timeout at all**, so a slow-but-healthy call could take as long as `HttpClient` allowed. The
+defaults here are chosen not to fail such calls (30s per attempt, 100s total, matching the old
+`HttpClient` ceiling), but a deployment that regularly sees Altinn take longer than 30s for a
+single call will now see failures where 2.2.0 waited.
+
+These surface as `CorrespondenceServiceException`, **not** as a failure result — see
 [Resilience](#resilience).
+
+### CorrespondenceServiceException is back, with a purpose
+
+It previously existed but was never thrown by anything. It is now what the library raises when the
+resilience pipeline rejects a request, so callers do not have to reference Polly to catch a timeout
+or an open circuit. Any pre-3.0.0 `catch` block for it was dead code and will now actually catch
+something.
 
 Everything else is additive: the package now ships XML documentation, so the public surface shows
 up in IntelliSense.

@@ -4,7 +4,6 @@ using Altinn.Dd.Correspondence.Tests.TestSupport;
 using System.Net;
 
 using CorrespondenceSend = Altinn.Dd.Correspondence.Features.Send;
-using CorrespondenceModels = Altinn.Dd.Correspondence.Models;
 
 namespace Altinn.Dd.Correspondence.Tests.Features;
 
@@ -89,7 +88,7 @@ public class SendHandlerTests
         {
             EmailSubject = "Subject",
             EmailBody = "Body",
-            EmailContentType = CorrespondenceModels.EmailContentType.Html
+            EmailContentType = EmailContentType.Html
         };
 
         var (_, harness) = await Send(details);

@@ -169,8 +169,8 @@ public class MapperTests
         Assert.Equal(CorrespondenceGet.NotificationTemplate.CustomMessage, notification!.NotificationTemplate);
         Assert.Equal(CorrespondenceGet.NotificationChannel.EmailAndSms, notification.NotificationChannel);
         Assert.Equal(CorrespondenceGet.NotificationChannel.SmsPreferred, notification.ReminderNotificationChannel);
-        Assert.Equal(CorrespondenceGet.EmailContentType.Html, notification.EmailContentType);
-        Assert.Equal(CorrespondenceGet.EmailContentType.Plain, notification.ReminderEmailContentType);
+        Assert.Equal(EmailContentType.Html, notification.EmailContentType);
+        Assert.Equal(EmailContentType.Plain, notification.ReminderEmailContentType);
         Assert.True(notification.SendReminder);
         Assert.Equal("someone@example.test", notification.CustomRecipient!.EmailAddress);
     }

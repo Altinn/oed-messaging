@@ -33,17 +33,18 @@ These hold most of the value: each builds the real handler over a mocked transpo
   time or at run time, so a renumbered member would silently produce wrong values everywhere. Each
   test compares one public enum against the generated enum it is cast to, member for member.
 
-  `EmailContentType` exists in both `Models` and `HttpClients` under the same name, so code that
-  imports both namespaces has to qualify the reference; `Features.Send.Handler` spells out
-  `HttpClients.` at that cast site.
+  `CorrespondencesRoleType` and `EmailContentType` are no longer duplicated — both live only in
+  `HttpClients`, so there is nothing to keep in step for those two.
 
 ### Resilience tests — `Extensions/`
 
 - **ResilienceTests**: the retry pipeline wired up by `AddDdCorrespondenceService`, driven through
   the real DI stack because the pipeline only exists once the client is registered. Covers that
-  transient failures are retried, that retries are bounded, that a 400 is not retried, and that
-  responses discarded on a retry are disposed — the last is a regression test for the hand-rolled
-  policy this replaced, which leaked a connection per retry.
+  transient failures are retried, that retries are bounded, that a 400 is not retried, that
+  responses discarded on a retry are disposed, and that a pipeline rejection is translated into
+  `CorrespondenceServiceException` with the Polly rejection kept as its inner exception. The
+  disposal test is a regression test for the hand-rolled policy this replaced, which leaked a
+  connection per retry.
 
   The backoff is shortened to milliseconds via `ConfigureAll<HttpStandardResilienceOptions>` so the
   suite does not sleep through the real 2s/4s/8s schedule. Retry counts and what gets retried are

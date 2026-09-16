@@ -204,12 +204,12 @@ public record InitializeCorrespondenceNotification(
     NotificationTemplate NotificationTemplate,
     string? EmailSubject,
     string? EmailBody,
-    EmailContentType EmailContentType,
+    HttpClients.EmailContentType EmailContentType,
     string? SmsBody,
     bool SendReminder,
     string? ReminderEmailSubject,
     string? ReminderEmailBody,
-    EmailContentType ReminderEmailContentType,
+    HttpClients.EmailContentType ReminderEmailContentType,
     string? ReminderSmsBody,
     NotificationChannel NotificationChannel,
     NotificationChannel ReminderNotificationChannel,
@@ -229,18 +229,6 @@ public enum NotificationTemplate
 
     /// <summary>Use Altinn's standard "you have a new message" wording.</summary>
     GenericAltinnMessage = 1,
-}
-
-/// <summary>
-/// How the body of an email notification should be interpreted.
-/// </summary>
-public enum EmailContentType
-{
-    /// <summary>The body is plain text.</summary>
-    Plain = 0,
-
-    /// <summary>The body is HTML.</summary>
-    Html = 1,
 }
 
 /// <summary>

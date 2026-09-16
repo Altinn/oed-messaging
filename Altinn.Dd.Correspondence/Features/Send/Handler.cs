@@ -1,4 +1,4 @@
-﻿using Altinn.Dd.Correspondence.Extensions;
+using Altinn.Dd.Correspondence.Extensions;
 using Altinn.Dd.Correspondence.HttpClients;
 using Altinn.Dd.Correspondence.Models;
 using Altinn.Dd.Correspondence.Options;
@@ -54,6 +54,10 @@ internal class Handler(
         {
             return CorrespondenceResult.Failure(e.Result.Detail);
         }
+        catch (Polly.ExecutionRejectedException e)
+        {
+            throw Exceptions.ResilienceFailure.Translate(e);
+        }
     }
 
     private static InitializeCorrespondenceNotificationExt? CreateNotification(NotificationDetails? notificationDetails, DateTime? shipmentDatetime)
@@ -85,7 +89,7 @@ internal class Handler(
         {
             notification.EmailSubject = notificationDetails.EmailSubject;
             notification.EmailBody = notificationDetails.EmailBody;
-            notification.EmailContentType = (HttpClients.EmailContentType)notificationDetails.EmailContentType;
+            notification.EmailContentType = notificationDetails.EmailContentType;
         }
 
         // Set SMS notification if provided

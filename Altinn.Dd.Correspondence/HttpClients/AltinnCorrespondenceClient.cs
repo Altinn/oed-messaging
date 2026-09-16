@@ -3575,7 +3575,11 @@ namespace Altinn.Dd.Correspondence.HttpClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    internal enum EmailContentType
+    // HAND-EDITED: made public so NotificationDetails and the Get overview can expose it
+    // directly instead of the library keeping duplicate copies. NSwag's typeAccessModifier is
+    // all-or-nothing, so regenerating this file resets it to "internal" and breaks the build
+    // (CS0053). Re-apply this modifier after any regeneration.
+    public enum EmailContentType
     {
 
         [System.Runtime.Serialization.EnumMember(Value = @"Plain")]

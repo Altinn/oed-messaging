@@ -1,4 +1,5 @@
 using Altinn.ApiClients.Maskinporten.Config;
+using Altinn.Dd.Correspondence.Exceptions;
 using Altinn.Dd.Correspondence.Extensions;
 using Altinn.Dd.Correspondence.HttpClients;
 using Altinn.Dd.Correspondence.Models;
@@ -9,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Http.Resilience;
+using Polly;
 using RichardSzalay.MockHttp;
 using System.Net;
 using System.Text;
@@ -69,7 +71,9 @@ public class ResilienceTests
         }
     }
 
-    private static IHost BuildHost(MockHttpMessageHandler mockHttp) =>
+    private static IHost BuildHost(
+        MockHttpMessageHandler mockHttp,
+        Action<HttpStandardResilienceOptions>? tighten = null) =>
         Host.CreateDefaultBuilder()
             .ConfigureServices(services =>
             {
@@ -91,6 +95,7 @@ public class ResilienceTests
                 {
                     options.Retry.Delay = TimeSpan.FromMilliseconds(1);
                     options.Retry.UseJitter = false;
+                    tighten?.Invoke(options);
                 });
 
                 services.ConfigureAll<HttpClientFactoryOptions>(options =>
@@ -192,5 +197,56 @@ public class ResilienceTests
 
         Assert.True(result.IsSuccess, result.Error);
         Assert.Equal(2, endpoint.Attempts);
+    }
+
+    /// <summary>Shrinks the timeouts so a slow upstream trips them without a slow test.</summary>
+    private static void ShortTimeouts(HttpStandardResilienceOptions options)
+    {
+        options.AttemptTimeout.Timeout = TimeSpan.FromMilliseconds(200);
+        options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(5);
+        options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(1);
+    }
+
+    [Fact]
+    public async Task ATimeout_SurfacesAsACorrespondenceServiceException()
+    {
+        // The pipeline raises Polly's TimeoutRejectedException. Callers should not have to
+        // reference Polly to catch it, so the library translates it at its own boundary.
+        using var mockHttp = new MockHttpMessageHandler().StubTokenExchange();
+        mockHttp.When(HttpMethod.Post, "*/correspondence/api/v1/correspondence")
+                .Respond(async _ =>
+                {
+                    await Task.Delay(800);
+                    return new HttpResponseMessage(HttpStatusCode.OK);
+                });
+
+        using var host = BuildHost(mockHttp, ShortTimeouts);
+        var service = host.Services.GetRequiredService<IDdCorrespondenceService>();
+
+        var exception = await Assert.ThrowsAsync<CorrespondenceServiceException>(
+            () => service.SendCorrespondence(Details()));
+
+        Assert.Contains("timed out", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ATranslatedFailure_KeepsTheUnderlyingRejectionAsInnerException()
+    {
+        // Translating must not lose the detail needed to diagnose which limit was hit.
+        using var mockHttp = new MockHttpMessageHandler().StubTokenExchange();
+        mockHttp.When(HttpMethod.Post, "*/correspondence/api/v1/correspondence")
+                .Respond(async _ =>
+                {
+                    await Task.Delay(800);
+                    return new HttpResponseMessage(HttpStatusCode.OK);
+                });
+
+        using var host = BuildHost(mockHttp, ShortTimeouts);
+        var service = host.Services.GetRequiredService<IDdCorrespondenceService>();
+
+        var exception = await Assert.ThrowsAsync<CorrespondenceServiceException>(
+            () => service.SendCorrespondence(Details()));
+
+        Assert.IsAssignableFrom<ExecutionRejectedException>(exception.InnerException);
     }
 }
