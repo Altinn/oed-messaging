@@ -37,6 +37,18 @@ These hold most of the value: each builds the real handler over a mocked transpo
   imports both namespaces has to qualify the reference; `Features.Send.Handler` spells out
   `HttpClients.` at that cast site.
 
+### Resilience tests — `Extensions/`
+
+- **ResilienceTests**: the retry pipeline wired up by `AddDdCorrespondenceService`, driven through
+  the real DI stack because the pipeline only exists once the client is registered. Covers that
+  transient failures are retried, that retries are bounded, that a 400 is not retried, and that
+  responses discarded on a retry are disposed — the last is a regression test for the hand-rolled
+  policy this replaced, which leaked a connection per retry.
+
+  The backoff is shortened to milliseconds via `ConfigureAll<HttpStandardResilienceOptions>` so the
+  suite does not sleep through the real 2s/4s/8s schedule. Retry counts and what gets retried are
+  left as the library configures them, since those are what is under test.
+
 ### Service tests — `Services/`
 
 - **DdCorrespondenceServiceTests**: `DdCorrespondenceService` is a thin facade over the three
@@ -49,6 +61,8 @@ These hold most of the value: each builds the real handler over a mocked transpo
 
 - **HandlerHarness**: builds a handler over `MockHttpMessageHandler`, records the request the
   handler sent (body, path, query, count), and hands back the deserialized wire contract.
+- **MaskinportenStub**: stubs the Maskinporten metadata, token and Altinn exchange calls, and
+  generates a throwaway RSA JWK, so tests that need the whole DI stack run without credentials.
 
 ## Running Tests
 
