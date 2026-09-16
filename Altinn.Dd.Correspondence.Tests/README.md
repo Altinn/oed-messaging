@@ -50,6 +50,12 @@ These hold most of the value: each builds the real handler over a mocked transpo
   suite does not sleep through the real 2s/4s/8s schedule. Retry counts and what gets retried are
   left as the library configures them, since those are what is under test.
 
+### Result tests — root
+
+- **ResultTests**: `Result<T>` itself, which replaced three near-identical result types. Covers the
+  success and failure shapes and both `Match` branches, including that a failure never passes its
+  null value to the success branch.
+
 ### Service tests — `Services/`
 
 - **DdCorrespondenceServiceTests**: `DdCorrespondenceService` is a thin facade over the three

@@ -8,7 +8,7 @@ namespace Altinn.Dd.Correspondence.Features.Send;
 
 internal class Handler(
     AltinnCorrespondenceClient httpClient,
-    IOptionsMonitor<DdCorrespondenceOptions> optionsMonitor) : IHandler<DdCorrespondenceDetails, CorrespondenceResult>
+    IOptionsMonitor<DdCorrespondenceOptions> optionsMonitor) : IHandler<DdCorrespondenceDetails, Result<ReceiptExternal>>
 {
     private const string LanguageCode = "nb";
     private const string SenderReferencePrefix = "EXT_DD_SHIP_";
@@ -16,7 +16,7 @@ internal class Handler(
 
     private readonly DdCorrespondenceOptions _correspondenceOptions = optionsMonitor.CurrentValue;
 
-    public async Task<CorrespondenceResult> Handle(DdCorrespondenceDetails correspondenceDetails)
+    public async Task<Result<ReceiptExternal>> Handle(DdCorrespondenceDetails correspondenceDetails)
     {
         var sendersReference = correspondenceDetails.SendersReference ?? $"{SenderReferencePrefix}{correspondenceDetails.IdempotencyKey}";
         try
@@ -48,11 +48,11 @@ internal class Handler(
 
             var result = await httpClient.CorrespondencePOSTAsync(correspondenceRequest);
             var receipt = new ReceiptExternal(result.ToDto(), correspondenceDetails.IdempotencyKey, sendersReference);
-            return CorrespondenceResult.Success(receipt);
+            return Result<ReceiptExternal>.Success(receipt);
         }
         catch (AltinnCorrespondenceException<ProblemDetails> e)
         {
-            return CorrespondenceResult.Failure(e.Result.Detail);
+            return Result<ReceiptExternal>.Failure(e.Result.Detail);
         }
         catch (Polly.ExecutionRejectedException e)
         {

@@ -1,4 +1,6 @@
 using Altinn.Dd.Correspondence.Features;
+using Altinn.Dd.Correspondence.Features.Get;
+using Altinn.Dd.Correspondence.Features.Search;
 using Altinn.Dd.Correspondence.HttpClients;
 using Altinn.Dd.Correspondence.Models;
 using Altinn.Dd.Correspondence.Services;
@@ -13,14 +15,14 @@ namespace Altinn.Dd.Correspondence.Tests.Services;
 /// </summary>
 public class DdCorrespondenceServiceTests
 {
-    private readonly IHandler<DdCorrespondenceDetails, CorrespondenceResult> _send =
-        Substitute.For<IHandler<DdCorrespondenceDetails, CorrespondenceResult>>();
+    private readonly IHandler<DdCorrespondenceDetails, Result<ReceiptExternal>> _send =
+        Substitute.For<IHandler<DdCorrespondenceDetails, Result<ReceiptExternal>>>();
 
-    private readonly IHandler<Correspondence.Features.Search.Query, Correspondence.Features.Search.Result> _search =
-        Substitute.For<IHandler<Correspondence.Features.Search.Query, Correspondence.Features.Search.Result>>();
+    private readonly IHandler<Query, Result<IEnumerable<Guid>>> _search =
+        Substitute.For<IHandler<Query, Result<IEnumerable<Guid>>>>();
 
-    private readonly IHandler<Correspondence.Features.Get.Request, Correspondence.Features.Get.Result> _get =
-        Substitute.For<IHandler<Correspondence.Features.Get.Request, Correspondence.Features.Get.Result>>();
+    private readonly IHandler<Request, Result<CorrespondenceOverview>> _get =
+        Substitute.For<IHandler<Request, Result<CorrespondenceOverview>>>();
 
     private readonly DdCorrespondenceService _sut;
 
@@ -33,7 +35,7 @@ public class DdCorrespondenceServiceTests
     public async Task SendCorrespondence_ForwardsToTheSendHandlerAlone()
     {
         var details = new DdCorrespondenceDetails { Recipient = "987654321" };
-        var expected = CorrespondenceResult.Success(new ReceiptExternal(
+        var expected = Result<ReceiptExternal>.Success(new ReceiptExternal(
             new InitializedCorrespondences([], []), details.IdempotencyKey, "caller-reference"));
         _send.Handle(details).Returns(expected);
 
@@ -48,8 +50,8 @@ public class DdCorrespondenceServiceTests
     [Fact]
     public async Task Search_ForwardsToTheSearchHandlerAlone()
     {
-        var query = new Correspondence.Features.Search.Query(ResourceId: "oed-correspondence", Role: CorrespondencesRoleType.Sender);
-        var expected = Correspondence.Features.Search.Result.Success([Guid.NewGuid()]);
+        var query = new Query(ResourceId: "oed-correspondence", Role: CorrespondencesRoleType.Sender);
+        var expected = Result<IEnumerable<Guid>>.Success([Guid.NewGuid()]);
         _search.Handle(query).Returns(expected);
 
         var result = await _sut.Search(query);
@@ -63,8 +65,8 @@ public class DdCorrespondenceServiceTests
     [Fact]
     public async Task Get_ForwardsToTheGetHandlerAlone()
     {
-        var request = new Correspondence.Features.Get.Request(Guid.NewGuid());
-        var expected = Correspondence.Features.Get.Result.Failure("Not found");
+        var request = new Request(Guid.NewGuid());
+        var expected = Result<CorrespondenceOverview>.Failure("Not found");
         _get.Handle(request).Returns(expected);
 
         var result = await _sut.Get(request);

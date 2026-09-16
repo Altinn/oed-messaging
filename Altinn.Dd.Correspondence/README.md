@@ -113,10 +113,11 @@ public class MyService
 
 ## API Reference
 
-`IDdCorrespondenceService` exposes three operations. Each returns a result object rather than
-throwing on an API rejection — see [Error Handling](#error-handling).
+`IDdCorrespondenceService` exposes three operations. Each returns a `Result<T>` rather than
+throwing on an API rejection — see [Error Handling](#error-handling). Inspect `IsSuccess` /
+`IsFailure` and read `Value` or `Error`, or use `Match` to handle both branches in one expression.
 
-### `SendCorrespondence(DdCorrespondenceDetails)` → `CorrespondenceResult`
+### `SendCorrespondence(DdCorrespondenceDetails)` → `Result<ReceiptExternal>`
 
 Creates a correspondence. Notable fields on `DdCorrespondenceDetails`:
 
@@ -141,10 +142,10 @@ The notification channel is derived from which `NotificationDetails` fields you 
 | Both of the above | `EmailAndSms` |
 | Neither (or `Notification` is null) | No notification is requested |
 
-On success, `CorrespondenceResult.Receipt` carries the initialized correspondences, the idempotency
-key and the senders reference.
+On success, `Result.Value` carries the initialized correspondences, the idempotency key and the
+senders reference.
 
-### `Search(Query)` → `Features.Search.Result`
+### `Search(Query)` → `Result<IEnumerable<Guid>>`
 
 Returns the ids of matching correspondences. `ResourceId` and `Role` are **required** — a query
 missing either fails locally without calling the API. `From`, `To`, `Status`, `OnBehalfOf`,
@@ -159,7 +160,7 @@ using Altinn.Dd.Correspondence.HttpClients;
 var query = new Query(ResourceId: "oed-correspondence", Role: CorrespondencesRoleType.Sender);
 ```
 
-### `Get(Features.Get.Request)` → `Features.Get.Result`
+### `Get(Request)` → `Result<CorrespondenceOverview>`
 
 Returns a `CorrespondenceOverview` for a single correspondence id, including content, attachments,
 notification settings and current status.
@@ -199,7 +200,7 @@ try
     var result2 = await _correspondenceService.SendCorrespondence(messageDetails);
     if (result2.IsSuccess)
     {
-        Console.WriteLine($"Woho {result2.Receipt!.IdempotencyKey}");
+        Console.WriteLine($"Woho {result2.Value!.IdempotencyKey}");
     }
     else if (result2.IsFailure)
     {
@@ -279,6 +280,29 @@ unchanged, so only the `using` moves:
 
 `NotificationDetails.EmailContentType` and the `EmailContentType` members of the Get overview now
 use that single type.
+
+### One result type replaces three
+
+`Models.CorrespondenceResult`, `Features.Get.Result` and `Features.Search.Result` were the same
+type three times over, differing only in the value they carried. They are replaced by
+`Altinn.Dd.Correspondence.Result<T>`:
+
+```csharp
+-Task<CorrespondenceResult>     SendCorrespondence(DdCorrespondenceDetails correspondence);
+-Task<Features.Search.Result>   Search(Query query);
+-Task<Features.Get.Result>      Get(Features.Get.Request request);
++Task<Result<ReceiptExternal>>       SendCorrespondence(DdCorrespondenceDetails correspondence);
++Task<Result<IEnumerable<Guid>>>     Search(Query query);
++Task<Result<CorrespondenceOverview>> Get(Request request);
+```
+
+`IsSuccess`, `IsFailure`, `Error`, `Success`, `Failure` and `Match` are unchanged. The one rename
+is on the send path: `CorrespondenceResult.Receipt` is now `Result.Value`, matching the other two.
+
+```csharp
+-if (result.IsSuccess) Console.WriteLine(result.Receipt!.IdempotencyKey);
++if (result.IsSuccess) Console.WriteLine(result.Value!.IdempotencyKey);
+```
 
 ### The resilience pipeline can fail calls that used to succeed
 

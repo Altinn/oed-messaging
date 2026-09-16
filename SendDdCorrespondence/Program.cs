@@ -105,11 +105,11 @@ try
     var sendResult = await messagingService.SendCorrespondence(messageDetails);
     if (sendResult.IsSuccess)
     {
-        Console.WriteLine($"Send succeeded: {sendResult.Receipt!.SendersReference}");
+        Console.WriteLine($"Send succeeded: {sendResult.Value!.SendersReference}");
         var query = new Query(
             Role: CorrespondencesRoleType.Sender,
             ResourceId: "oed-correspondence", 
-            SendersReference: sendResult.Receipt!.SendersReference);
+            SendersReference: sendResult.Value!.SendersReference);
 
         var searchResult = await messagingService.Search(query);
         if (searchResult.IsSuccess)

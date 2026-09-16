@@ -3,7 +3,7 @@ using Altinn.Dd.Correspondence.HttpClients;
 
 namespace Altinn.Dd.Correspondence.Features.Get;
 
-internal class Handler : IHandler<Request, Result>
+internal class Handler : IHandler<Request, Result<CorrespondenceOverview>>
 {
     private readonly AltinnCorrespondenceClient _httpClient;
 
@@ -13,16 +13,16 @@ internal class Handler : IHandler<Request, Result>
         _httpClient = httpClient;
     }
 
-    public async Task<Result> Handle(Request request)
+    public async Task<Result<CorrespondenceOverview>> Handle(Request request)
     {
         try
         {
             var response = await _httpClient.CorrespondenceGET2Async(request.CorrespondenceId);
-            return Result.Success(response.ToDto());
+            return Result<CorrespondenceOverview>.Success(response.ToDto());
         }
         catch (AltinnCorrespondenceException<ProblemDetails> e)
         {
-            return Result.Failure(e.Result.Detail);
+            return Result<CorrespondenceOverview>.Failure(e.Result.Detail);
         }
         catch (Polly.ExecutionRejectedException e)
         {

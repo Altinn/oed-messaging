@@ -79,7 +79,7 @@ public class DdCorrespondenceServiceIntegrationTests
         var result = await service.SendCorrespondence(details);
 
         Assert.True(result.IsSuccess, $"Failed with error: {result.Error}");
-        Assert.Equal(details.IdempotencyKey, result.Receipt!.IdempotencyKey);
+        Assert.Equal(details.IdempotencyKey, result.Value!.IdempotencyKey);
 
         mockHttp.VerifyNoOutstandingExpectation();
     }

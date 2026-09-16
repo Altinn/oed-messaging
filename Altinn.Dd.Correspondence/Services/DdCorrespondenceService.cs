@@ -1,4 +1,5 @@
 using Altinn.Dd.Correspondence.Features;
+using Altinn.Dd.Correspondence.Features.Get;
 using Altinn.Dd.Correspondence.Features.Search;
 using Altinn.Dd.Correspondence.Models;
 
@@ -17,21 +18,21 @@ public interface IDdCorrespondenceService
     /// <returns>A receipt indicating whether the correspondence was successfully created.</returns>
     /// <remarks>An API rejection is returned as a failure result rather than thrown. A duplicate
     /// idempotency key (409) and any unexpected status still throw; see the package README.</remarks>
-    Task<CorrespondenceResult> SendCorrespondence(DdCorrespondenceDetails correspondence);
+    Task<Result<ReceiptExternal>> SendCorrespondence(DdCorrespondenceDetails correspondence);
 
     /// <summary>
     /// Finds the ids of correspondences matching a query.
     /// </summary>
     /// <param name="query">The search filters. ResourceId and Role are required.</param>
     /// <returns>The matching correspondence ids, or a failure result.</returns>
-    Task<Features.Search.Result> Search(Query query);
+    Task<Result<IEnumerable<Guid>>> Search(Query query);
 
     /// <summary>
     /// Retrieves the overview of a single correspondence.
     /// </summary>
     /// <param name="request">The correspondence to retrieve.</param>
     /// <returns>The correspondence overview, or a failure result.</returns>
-    Task<Features.Get.Result> Get(Features.Get.Request request);
+    Task<Result<CorrespondenceOverview>> Get(Request request);
 }
 
 /// <summary>
@@ -41,9 +42,9 @@ public interface IDdCorrespondenceService
 /// </summary>
 public sealed class DdCorrespondenceService : IDdCorrespondenceService
 {
-    private readonly IHandler<DdCorrespondenceDetails, CorrespondenceResult> _send;
-    private readonly IHandler<Query, Features.Search.Result> _search;
-    private readonly IHandler<Features.Get.Request, Features.Get.Result> _get;
+    private readonly IHandler<DdCorrespondenceDetails, Result<ReceiptExternal>> _send;
+    private readonly IHandler<Query, Result<IEnumerable<Guid>>> _search;
+    private readonly IHandler<Request, Result<CorrespondenceOverview>> _get;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DdCorrespondenceService"/> class.
@@ -52,24 +53,24 @@ public sealed class DdCorrespondenceService : IDdCorrespondenceService
     /// <param name="search">Handler for the search operation.</param>
     /// <param name="get">Handler for the get operation.</param>
     public DdCorrespondenceService(
-        IHandler<DdCorrespondenceDetails, CorrespondenceResult> send,
-        IHandler<Query, Features.Search.Result> search,
-        IHandler<Features.Get.Request, Features.Get.Result> get)
+        IHandler<DdCorrespondenceDetails, Result<ReceiptExternal>> send,
+        IHandler<Query, Result<IEnumerable<Guid>>> search,
+        IHandler<Request, Result<CorrespondenceOverview>> get)
     {
         _send = send;
         _search = search;
         _get = get;
     }
 
-    /// <inheritdoc />        
-    public Task<CorrespondenceResult> SendCorrespondence(DdCorrespondenceDetails correspondence)
+    /// <inheritdoc />
+    public Task<Result<ReceiptExternal>> SendCorrespondence(DdCorrespondenceDetails correspondence)
         => _send.Handle(correspondence);
 
     /// <inheritdoc />
-    public Task<Features.Search.Result> Search(Query query)
+    public Task<Result<IEnumerable<Guid>>> Search(Query query)
         => _search.Handle(query);
 
     /// <inheritdoc />
-    public Task<Features.Get.Result> Get(Features.Get.Request request)
+    public Task<Result<CorrespondenceOverview>> Get(Request request)
         => _get.Handle(request);
 }

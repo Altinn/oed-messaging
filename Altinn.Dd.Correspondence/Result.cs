@@ -1,10 +1,16 @@
-namespace Altinn.Dd.Correspondence.Features.Get;
+namespace Altinn.Dd.Correspondence;
 
 /// <summary>
-/// The outcome of retrieving a correspondence overview. An API rejection that carries a problem document is reported here
-/// rather than thrown; see the package README for the statuses that still throw.
+/// The outcome of a correspondence operation: either a value, or the detail of an API rejection.
 /// </summary>
-public record Result
+/// <remarks>
+/// An API rejection that carries a problem document is reported here rather than thrown. Failures
+/// that never reached Altinn - a timeout, an open circuit - throw
+/// <see cref="Exceptions.CorrespondenceServiceException"/> instead, and any other status from the
+/// API throws. See the package README for which statuses take which route.
+/// </remarks>
+/// <typeparam name="T">The value a successful operation produces.</typeparam>
+public sealed class Result<T>
 {
     /// <summary>Gets a value indicating whether the operation succeeded.</summary>
     public bool IsSuccess { get; }
@@ -12,15 +18,15 @@ public record Result
     /// <summary>Gets a value indicating whether the operation was rejected.</summary>
     public bool IsFailure => !IsSuccess;
 
-    /// <summary>Gets the retrieved overview, or <c>null</c> when the operation was rejected.</summary>
-    public CorrespondenceOverview? Value { get; }
+    /// <summary>Gets the value produced, or <c>null</c> when the operation was rejected.</summary>
+    public T? Value { get; }
 
     /// <summary>Gets the rejection detail reported by the API, or an empty string on success.</summary>
     public string Error { get; }
 
     private Result(
         bool isSuccess,
-        CorrespondenceOverview? value,
+        T? value,
         string error)
     {
         IsSuccess = isSuccess;
@@ -29,15 +35,15 @@ public record Result
     }
 
     /// <summary>Creates a successful result carrying <paramref name="value"/>.</summary>
-    /// <param name="value">The retrieved overview.</param>
+    /// <param name="value">The value the operation produced.</param>
     /// <returns>A successful result.</returns>
-    public static Result Success(CorrespondenceOverview value) =>
+    public static Result<T> Success(T value) =>
         new(true, value, string.Empty);
 
     /// <summary>Creates a failed result carrying <paramref name="error"/>.</summary>
     /// <param name="error">The rejection detail reported by the API.</param>
     /// <returns>A failed result.</returns>
-    public static Result Failure(string error) =>
+    public static Result<T> Failure(string error) =>
         new(false, default, error);
 
     /// <summary>
@@ -48,7 +54,7 @@ public record Result
     /// <param name="onFailure">Invoked with the error detail when the operation was rejected.</param>
     /// <returns>Whatever the invoked branch returned.</returns>
     public TResult Match<TResult>(
-        Func<CorrespondenceOverview, TResult> onSuccess,
+        Func<T, TResult> onSuccess,
         Func<string, TResult> onFailure)
     {
         return IsSuccess

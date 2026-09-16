@@ -34,7 +34,7 @@ public class SendHandlerTests
         Notification = null
     };
 
-    private static async Task<(CorrespondenceResult Result, HandlerHarness Harness)> Send(DdCorrespondenceDetails details)
+    private static async Task<(Result<ReceiptExternal> Result, HandlerHarness Harness)> Send(DdCorrespondenceDetails details)
     {
         var harness = new HandlerHarness().RespondsWith(HttpMethod.Post, AnAcceptedResponse());
         var sut = new CorrespondenceSend.Handler(harness.Client(), harness.Options());
@@ -157,7 +157,7 @@ public class SendHandlerTests
 
         var expected = $"EXT_DD_SHIP_{details.IdempotencyKey}";
         Assert.Equal(expected, harness.SentCorrespondence().Correspondence.SendersReference);
-        Assert.Equal(expected, result.Receipt!.SendersReference);
+        Assert.Equal(expected, result.Value!.SendersReference);
     }
 
     [Fact]
@@ -169,7 +169,7 @@ public class SendHandlerTests
         var (result, harness) = await Send(details);
 
         Assert.Equal("caller-reference", harness.SentCorrespondence().Correspondence.SendersReference);
-        Assert.Equal("caller-reference", result.Receipt!.SendersReference);
+        Assert.Equal("caller-reference", result.Value!.SendersReference);
     }
 
     [Fact]
@@ -182,7 +182,7 @@ public class SendHandlerTests
         var sent = harness.SentCorrespondence();
         Assert.Equal(details.IdempotencyKey, sent.IdempotentKey);
         Assert.Equal(HandlerHarness.ResourceId, sent.Correspondence.ResourceId);
-        Assert.Equal(details.IdempotencyKey, result.Receipt!.IdempotencyKey);
+        Assert.Equal(details.IdempotencyKey, result.Value!.IdempotencyKey);
     }
 
     [Theory]
@@ -209,7 +209,7 @@ public class SendHandlerTests
 
         Assert.True(result.IsFailure);
         Assert.Equal("1020: Message title cannot be empty", result.Error);
-        Assert.Null(result.Receipt);
+        Assert.Null(result.Value);
     }
 
     [Fact]
