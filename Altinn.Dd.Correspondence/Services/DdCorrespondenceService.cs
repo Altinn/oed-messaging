@@ -33,6 +33,17 @@ public interface IDdCorrespondenceService
     /// <param name="request">The correspondence to retrieve.</param>
     /// <returns>The correspondence overview, or a failure result.</returns>
     Task<Result<CorrespondenceOverview>> Get(Request request);
+
+    /// <summary>
+    /// Retrieves the id of the Dialogporten dialog a correspondence belongs to, so later
+    /// correspondences can be sent to the same dialog through <see cref="DdCorrespondenceDetails.DialogId"/>.
+    /// </summary>
+    /// <param name="request">The correspondence whose dialog to look up.</param>
+    /// <returns>The dialog id, <c>null</c> if Altinn has not created the dialog yet, or a failure
+    /// result.</returns>
+    /// <remarks>Altinn creates the dialog after the correspondence is published, so a lookup
+    /// straight after sending returns <c>null</c>. Retry until it returns an id.</remarks>
+    Task<Result<Guid?>> GetDialogId(Request request);
 }
 
 /// <summary>
@@ -73,4 +84,10 @@ public sealed class DdCorrespondenceService : IDdCorrespondenceService
     /// <inheritdoc />
     public Task<Result<CorrespondenceOverview>> Get(Request request)
         => _get.Handle(request);
+
+    /// <inheritdoc />
+    public async Task<Result<Guid?>> GetDialogId(Request request)
+        => (await _get.Handle(request)).Match(
+            onSuccess: overview => Result<Guid?>.Success(overview.DialogId),
+            onFailure: Result<Guid?>.Failure);
 }

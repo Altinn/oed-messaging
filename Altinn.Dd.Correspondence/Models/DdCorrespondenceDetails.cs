@@ -67,4 +67,22 @@ public class DdCorrespondenceDetails
     /// If not provided, a reference will be automatically generated.
     /// </summary>
     public string? SendersReference { get; set; }
+
+    /// <summary>
+    /// Gets or sets the id of an existing Dialogporten dialog. When set, the correspondence is added
+    /// to that dialog as a transmission instead of creating a new dialog. The dialog must belong to
+    /// the same recipient and to a resource with the same service owner.
+    /// </summary>
+    /// <remarks>
+    /// Altinn creates a correspondence's dialog after the correspondence is published, so the id is
+    /// not in the send receipt. Read it later with <see cref="Services.IDdCorrespondenceService.GetDialogId"/>.
+    /// </remarks>
+    public Guid? DialogId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the kind of transmission the correspondence becomes on the dialog given by
+    /// <see cref="DialogId"/>. Only valid together with <see cref="DialogId"/>. If not provided,
+    /// Altinn uses <see cref="Models.TransmissionType.Information"/>.
+    /// </summary>
+    public TransmissionType? TransmissionType { get; set; }
 }

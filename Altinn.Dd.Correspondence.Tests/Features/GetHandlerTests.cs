@@ -36,6 +36,34 @@ public class GetHandlerTests
     }
 
     [Fact]
+    public async Task Get_ReadsTheDialogIdFromTheExternalReferences()
+    {
+        // The transmission type reference is what a correspondence sent to an existing dialog
+        // carries. Reference types are read by name, so an enum without that member fails to
+        // deserialize the whole overview.
+        var dialogId = Guid.NewGuid();
+        using var harness = new HandlerHarness().RespondsWith(HttpMethod.Get, new CorrespondenceOverviewExt
+        {
+            ResourceId = "oed-correspondence",
+            SendersReference = "caller-reference",
+            CorrespondenceId = Guid.NewGuid(),
+            Status = CorrespondenceStatusExt.Published,
+            ExternalReferences =
+            [
+                new ExternalReferenceExt { ReferenceType = ReferenceTypeExt.DialogportenDialogId, ReferenceValue = dialogId.ToString() },
+                new ExternalReferenceExt { ReferenceType = ReferenceTypeExt.DialogportenTransmissionType, ReferenceValue = "Information" }
+            ]
+        });
+        var sut = new Handler(harness.Client());
+
+        var result = await sut.Handle(new Request(Guid.NewGuid()));
+
+        Assert.True(result.IsSuccess, result.Error);
+        Assert.Equal(dialogId, result.Value!.DialogId);
+        Assert.Contains(result.Value.ExternalReferences!, reference => reference.ReferenceType == ReferenceType.DialogportenTransmissionType);
+    }
+
+    [Fact]
     public async Task Get_WhenTheCorrespondenceIsUnknown_ReturnsFailureCarryingTheProblemDetail()
     {
         using var harness = new HandlerHarness()

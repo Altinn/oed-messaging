@@ -43,6 +43,14 @@ See [Breaking changes in 3.0.0](README.md#breaking-changes-in-300) for migration
 - XML documentation for the whole public API.
 - README sections on error handling (which HTTP statuses return a failure result and which throw)
   and on the resilience defaults.
+- Sending to an existing Dialogporten dialog: `DdCorrespondenceDetails.DialogId` and
+  `DdCorrespondenceDetails.TransmissionType`, with the new `Models.TransmissionType` enum. See
+  [Sending to an existing dialog](README.md#sending-to-an-existing-dialog).
+- `IDdCorrespondenceService.GetDialogId` and `CorrespondenceOverview.DialogId`, to read the dialog a
+  correspondence belongs to. A custom implementation of `IDdCorrespondenceService` has to add
+  `GetDialogId`.
+- `ReferenceType.DialogportenTransmissionType`. Reading a correspondence that carries this
+  reference type used to fail to deserialize.
 
 ### Changed
 

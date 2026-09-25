@@ -14,10 +14,19 @@ internal class Handler(
     private const string SenderReferencePrefix = "EXT_DD_SHIP_";
     private const string CountryCode = "0192";
 
+    internal const string TransmissionTypeWithoutDialogId =
+        "A TransmissionType can only be set together with a DialogId.";
+
     private readonly DdCorrespondenceOptions _correspondenceOptions = optionsMonitor.CurrentValue;
 
     public async Task<Result<ReceiptExternal>> Handle(DdCorrespondenceDetails correspondenceDetails)
     {
+        // Altinn rejects this too, but only after a round trip.
+        if (correspondenceDetails.TransmissionType is not null && correspondenceDetails.DialogId is null)
+        {
+            return Result<ReceiptExternal>.Failure(TransmissionTypeWithoutDialogId);
+        }
+
         var sendersReference = correspondenceDetails.SendersReference ?? $"{SenderReferencePrefix}{correspondenceDetails.IdempotencyKey}";
         try
         {
@@ -39,7 +48,8 @@ internal class Handler(
                     RequestedPublishTime = correspondenceDetails.VisibleDateTime ?? DateTimeOffset.Now,
                     PropertyList = new Dictionary<string, string>(),
                     Notification = CreateNotification(correspondenceDetails.Notification, correspondenceDetails.ShipmentDatetime),
-                    IgnoreReservation = correspondenceDetails.IgnoreReservation
+                    IgnoreReservation = correspondenceDetails.IgnoreReservation,
+                    ExternalReferences = CreateExternalReferences(correspondenceDetails)
                 },
                 Recipients = [FormatRecipient(correspondenceDetails.Recipient ?? string.Empty)],
                 ExistingAttachments = [],
@@ -58,6 +68,36 @@ internal class Handler(
         {
             throw Exceptions.ResilienceFailure.Translate(e);
         }
+    }
+
+    private static List<ExternalReferenceExt>? CreateExternalReferences(DdCorrespondenceDetails correspondenceDetails)
+    {
+        // Without a dialog there is nothing to reference, and the request stays as it was.
+        if (correspondenceDetails.DialogId is not { } dialogId)
+        {
+            return null;
+        }
+
+        var references = new List<ExternalReferenceExt>
+        {
+            new()
+            {
+                ReferenceType = ReferenceTypeExt.DialogportenDialogId,
+                ReferenceValue = dialogId.ToString()
+            }
+        };
+
+        // Altinn accepts the transmission type by name or by number; send the name.
+        if (correspondenceDetails.TransmissionType is { } transmissionType)
+        {
+            references.Add(new ExternalReferenceExt
+            {
+                ReferenceType = ReferenceTypeExt.DialogportenTransmissionType,
+                ReferenceValue = transmissionType.ToString()
+            });
+        }
+
+        return references;
     }
 
     private static InitializeCorrespondenceNotificationExt? CreateNotification(NotificationDetails? notificationDetails, DateTime? shipmentDatetime)

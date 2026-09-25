@@ -50,7 +50,19 @@ public record CorrespondenceOverview(
     string? StatusText,
     DateTimeOffset StatusChanged,
     ICollection<CorrespondenceNotificationOverview>? Notifications,
-    int? Altinn2CorrespondenceId);
+    int? Altinn2CorrespondenceId)
+{
+    /// <summary>
+    /// The id of the Dialogporten dialog this correspondence belongs to, taken from its
+    /// <see cref="ReferenceType.DialogportenDialogId"/> external reference. Null until Altinn has
+    /// created the dialog, which happens after the correspondence is published.
+    /// </summary>
+    public Guid? DialogId =>
+        ExternalReferences?
+            .Where(reference => reference.ReferenceType == ReferenceType.DialogportenDialogId)
+            .Select(reference => Guid.TryParse(reference.ReferenceValue, out var id) ? id : (Guid?)null)
+            .FirstOrDefault(id => id is not null);
+}
 
 /// <summary>
 /// Represents the content of a reportee element of the type correspondence.
@@ -165,6 +177,12 @@ public enum ReferenceType
 
     /// <summary>A Dialogporten transmission.</summary>
     DialogportenTransmissionId = 5,
+
+    /// <summary>
+    /// The Dialogporten transmission type of a correspondence sent to an existing dialog. Only
+    /// valid together with a <see cref="DialogportenDialogId"/> reference.
+    /// </summary>
+    DialogportenTransmissionType = 6,
 }
 
 /// <summary>

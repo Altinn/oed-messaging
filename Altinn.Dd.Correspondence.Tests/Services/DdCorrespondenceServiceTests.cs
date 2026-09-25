@@ -76,4 +76,87 @@ public class DdCorrespondenceServiceTests
         await _send.DidNotReceiveWithAnyArgs().Handle(default!);
         await _search.DidNotReceiveWithAnyArgs().Handle(default!);
     }
+
+    // GetDialogId is the one method that does more than forward: it reads the dialog id off the
+    // overview the get handler returns.
+
+    private static CorrespondenceOverview AnOverview(params ExternalReference[] references) => new(
+        ResourceId: "oed-correspondence",
+        SendersReference: "reference",
+        MessageSender: null,
+        Content: null,
+        RequestedPublishTime: null,
+        AllowSystemDeleteAfter: null,
+        DueDateTime: null,
+        ExternalReferences: references,
+        PropertyList: null,
+        ReplyOptions: null,
+        Notification: null,
+        IgnoreReservation: null,
+        Published: null,
+        IsConfirmationNeeded: false,
+        IsConfidential: false,
+        Recipient: null,
+        CorrespondenceId: Guid.NewGuid(),
+        Created: DateTimeOffset.UtcNow,
+        Status: Altinn.Dd.Correspondence.Features.Get.CorrespondenceStatus.Published,
+        StatusText: null,
+        StatusChanged: DateTimeOffset.UtcNow,
+        Notifications: null,
+        Altinn2CorrespondenceId: null);
+
+    [Fact]
+    public async Task GetDialogId_WhenTheDialogReferenceIsPresent_ReturnsItsId()
+    {
+        var request = new Request(Guid.NewGuid());
+        var dialogId = Guid.NewGuid();
+        _get.Handle(request).Returns(Result<CorrespondenceOverview>.Success(AnOverview(
+            new ExternalReference("instance", ReferenceType.AltinnAppInstance),
+            new ExternalReference(dialogId.ToString(), ReferenceType.DialogportenDialogId))));
+
+        var result = await _sut.GetDialogId(request);
+
+        Assert.True(result.IsSuccess, result.Error);
+        Assert.Equal(dialogId, result.Value);
+        await _get.Received(1).Handle(request);
+        await _send.DidNotReceiveWithAnyArgs().Handle(default!);
+        await _search.DidNotReceiveWithAnyArgs().Handle(default!);
+    }
+
+    [Fact]
+    public async Task GetDialogId_BeforeAltinnHasCreatedTheDialog_ReturnsNull()
+    {
+        var request = new Request(Guid.NewGuid());
+        _get.Handle(request).Returns(Result<CorrespondenceOverview>.Success(AnOverview()));
+
+        var result = await _sut.GetDialogId(request);
+
+        Assert.True(result.IsSuccess, result.Error);
+        Assert.Null(result.Value);
+    }
+
+    [Fact]
+    public async Task GetDialogId_WhenTheDialogReferenceIsNotAGuid_ReturnsNull()
+    {
+        var request = new Request(Guid.NewGuid());
+        _get.Handle(request).Returns(Result<CorrespondenceOverview>.Success(AnOverview(
+            new ExternalReference("not-a-guid", ReferenceType.DialogportenDialogId))));
+
+        var result = await _sut.GetDialogId(request);
+
+        Assert.True(result.IsSuccess, result.Error);
+        Assert.Null(result.Value);
+    }
+
+    [Fact]
+    public async Task GetDialogId_WhenTheGetFails_ReturnsTheFailure()
+    {
+        var request = new Request(Guid.NewGuid());
+        _get.Handle(request).Returns(Result<CorrespondenceOverview>.Failure("Not found"));
+
+        var result = await _sut.GetDialogId(request);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Not found", result.Error);
+    }
 }

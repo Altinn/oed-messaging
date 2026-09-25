@@ -4323,6 +4323,9 @@ namespace Altinn.Dd.Correspondence.HttpClients
         [System.Runtime.Serialization.EnumMember(Value = @"DialogportenTransmissionId")]
         DialogportenTransmissionId = 5,
 
+        [System.Runtime.Serialization.EnumMember(Value = @"DialogportenTransmissionType")]
+        DialogportenTransmissionType = 6,
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NSwag", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]

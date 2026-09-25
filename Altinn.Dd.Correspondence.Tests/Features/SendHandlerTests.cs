@@ -226,4 +226,67 @@ public class SendHandlerTests
 
         Assert.Equal((int)HttpStatusCode.Conflict, exception.StatusCode);
     }
+
+    [Fact]
+    public async Task DialogId_WhenNotProvided_NoExternalReferencesAreSent()
+    {
+        var (_, harness) = await Send(Details());
+
+        Assert.Null(harness.SentCorrespondence().Correspondence.ExternalReferences);
+    }
+
+    [Fact]
+    public async Task DialogId_WhenProvided_IsSentAsADialogportenDialogIdReference()
+    {
+        var dialogId = Guid.NewGuid();
+        var details = Details();
+        details.DialogId = dialogId;
+
+        var (result, harness) = await Send(details);
+
+        Assert.True(result.IsSuccess, result.Error);
+        var reference = Assert.Single(harness.SentCorrespondence().Correspondence.ExternalReferences);
+        Assert.Equal(ReferenceTypeExt.DialogportenDialogId, reference.ReferenceType);
+        Assert.Equal(dialogId.ToString(), reference.ReferenceValue);
+    }
+
+    [Fact]
+    public async Task TransmissionType_WithDialogId_IsSentByNameAlongsideTheDialogReference()
+    {
+        var dialogId = Guid.NewGuid();
+        var details = Details();
+        details.DialogId = dialogId;
+        details.TransmissionType = TransmissionType.Decision;
+
+        var (result, harness) = await Send(details);
+
+        Assert.True(result.IsSuccess, result.Error);
+        var references = harness.SentCorrespondence().Correspondence.ExternalReferences;
+        Assert.Collection(references,
+            reference =>
+            {
+                Assert.Equal(ReferenceTypeExt.DialogportenDialogId, reference.ReferenceType);
+                Assert.Equal(dialogId.ToString(), reference.ReferenceValue);
+            },
+            reference =>
+            {
+                Assert.Equal(ReferenceTypeExt.DialogportenTransmissionType, reference.ReferenceType);
+                Assert.Equal("Decision", reference.ReferenceValue);
+            });
+        // Altinn reads the reference type by name, so the new member must go out as a string.
+        Assert.Contains("\"DialogportenTransmissionType\"", harness.LastRequestBody);
+    }
+
+    [Fact]
+    public async Task TransmissionType_WithoutDialogId_FailsWithoutCallingAltinn()
+    {
+        var details = Details();
+        details.TransmissionType = TransmissionType.Request;
+
+        var (result, harness) = await Send(details);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(CorrespondenceSend.Handler.TransmissionTypeWithoutDialogId, result.Error);
+        Assert.Equal(0, harness.RequestCount);
+    }
 }

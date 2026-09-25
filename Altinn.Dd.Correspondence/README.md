@@ -135,6 +135,8 @@ Creates a correspondence. Notable fields on `DdCorrespondenceDetails`:
 | `IgnoreReservation` | Overrides a recipient's KRR reservation against digital communication. |
 | `IdempotencyKey` | Generated automatically if not supplied. |
 | `SendersReference` | Defaults to `EXT_DD_SHIP_{IdempotencyKey}` if not supplied. |
+| `DialogId` | Optional. The id of an existing Dialogporten dialog; the correspondence is added to it as a transmission instead of creating a new dialog. See [Sending to an existing dialog](#sending-to-an-existing-dialog). |
+| `TransmissionType` | Optional, and only valid together with `DialogId` — setting it alone fails locally without calling the API. Defaults to `Information` on Altinn's side. |
 
 The notification channel is derived from which `NotificationDetails` fields you populate:
 
@@ -167,6 +169,37 @@ var query = new Query(ResourceId: "oed-correspondence", Role: CorrespondencesRol
 
 Returns a `CorrespondenceOverview` for a single correspondence id, including content, attachments,
 notification settings and current status.
+
+### `GetDialogId(Request)` → `Result<Guid?>`
+
+Returns the id of the Dialogporten dialog a correspondence belongs to — the same value as
+`CorrespondenceOverview.DialogId`. It is `null` until Altinn has created the dialog, which happens
+in the background after the correspondence is published, so a lookup straight after sending
+usually returns `null`. Retry until it returns an id.
+
+### Sending to an existing dialog
+
+Every correspondence creates its own dialog in Dialogporten unless it names an existing one. To
+keep several correspondences in one dialog, send the first one normally, read its dialog id with
+`GetDialogId`, and set `DialogId` on the ones that follow:
+
+```csharp
+var dialogId = (await messagingService.GetDialogId(new Request(firstCorrespondenceId))).Value;
+
+var followUp = new DdCorrespondenceDetails
+{
+    Recipient = "01010112345",
+    Title = "Update",
+    Body = "...",
+    DialogId = dialogId,
+    TransmissionType = TransmissionType.Information
+};
+```
+
+Altinn checks that the dialog exists, that it belongs to the same recipient, and that its resource
+has the same service owner as the new correspondence's resource; a mismatch is returned as a
+failure result. A correspondence sent this way cannot reply to a specific earlier transmission —
+Altinn does not support that through Correspondence.
 
 ## Complete Example
 
