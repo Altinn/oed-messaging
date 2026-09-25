@@ -3,20 +3,25 @@ using Altinn.Dd.Correspondence.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Altinn.Dd.Correspondence.Services;
 using Altinn.Dd.Correspondence.Features.Search;
 using Altinn.Dd.Correspondence.HttpClients;
 
-var configuration = new ConfigurationBuilder()
-    .AddJsonFile("appsettings.json")
-    .AddUserSecrets<Program>()
-    .Build();
-
 var host = Host.CreateDefaultBuilder(args)
+    .ConfigureAppConfiguration(config => config.AddUserSecrets<Program>())
+    // The HttpClient and Polly pipelines log every request and attempt at Information, which buries
+    // the demo's own output. Keep warnings and errors.
+    .ConfigureLogging(logging => logging
+        .AddFilter("Microsoft", LogLevel.Warning)
+        .AddFilter("System", LogLevel.Warning)
+        .AddFilter("Polly", LogLevel.Warning))
     .ConfigureServices(services =>
     {
         // Eksempel 1
         services.AddDdCorrespondenceService("DdConfig");
+        services.AddHttpClient("AltinnCorrespondenceClient")
+            .AddHttpMessageHandler(() => new PrintSendResponseHandler());
 
         // Eksempel 2 og 3 trenger disse i tillegg:
         //   using Altinn.ApiClients.Maskinporten.Config;
@@ -62,7 +67,7 @@ var messagingService = host.Services.GetRequiredService<IDdCorrespondenceService
 
 var messageDetails = new DdCorrespondenceDetails
 {
-    Recipient = "05916896346",
+    Recipient = "21890049793",
     Title = "Test Correspondence",
     Summary = "# Test Summary\nThis is a test summary in **markdown** format.",
     Body = "# Test Body\nThis is the main body content in **markdown** format.\n\n- Item 1\n- Item 2",
@@ -78,8 +83,15 @@ var messageDetails = new DdCorrespondenceDetails
     AllowForwarding = false,
     IgnoreReservation = true,
     IdempotencyKey = Guid.NewGuid(),
-    SendersReference = "danieltester"
+    SendersReference = "sender_ref_123"
 };
+
+// Dialog demo, run with: dotnet run -- dialog
+if (args.Contains("dialog"))
+{
+    await RunDialogDemo(messagingService, messageDetails.Recipient!);
+    return;
+}
 
 try
 {
@@ -126,5 +138,108 @@ try
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"Error: {ex.Message}");
+    Console.WriteLine($"Error: {ex}");
+}
+
+// Sends one correspondence, which creates a new Dialogporten dialog, waits for Altinn to create
+// that dialog, and then adds one transmission of every TransmissionType to it.
+static async Task RunDialogDemo(IDdCorrespondenceService messagingService, string recipient)
+{
+    var runReference = $"dialog-demo-{DateTime.Now:yyyyMMdd-HHmmss}";
+
+    try
+    {
+        // 1. The first correspondence creates the dialog. No notifications, so the demo does not
+        //    send nine e-mails and text messages.
+        var rootResult = await messagingService.SendCorrespondence(new DdCorrespondenceDetails
+        {
+            Recipient = recipient,
+            Title = "Dialogdemo: første melding",
+            Summary = "Denne meldingen oppretter dialogen.",
+            Body = "# Første melding\nDenne meldingen oppretter dialogen i Dialogporten.",
+            Sender = "Test Sender",
+            Notification = null,
+            IgnoreReservation = true,
+            SendersReference = runReference
+        });
+        if (rootResult.IsFailure)
+        {
+            Console.WriteLine($"Root send failed: {rootResult.Error}");
+            return;
+        }
+
+        var rootId = rootResult.Value!.InitalizedCorrespondences.Correspondences.Single().CorrespondenceId;
+        Console.WriteLine($"Root correspondence sent: {rootId}");
+
+        // 2. Altinn creates the dialog in the background after the correspondence is published, so
+        //    the id is not in the receipt. Poll until it shows up.
+        Guid? dialogId = null;
+        var deadline = DateTime.UtcNow.AddMinutes(3);
+        while (dialogId is null && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(5));
+            var dialogResult = await messagingService.GetDialogId(new Altinn.Dd.Correspondence.Features.Get.Request(rootId));
+            if (dialogResult.IsFailure)
+            {
+                Console.WriteLine($"GetDialogId failed: {dialogResult.Error}");
+                return;
+            }
+
+            dialogId = dialogResult.Value;
+            Console.WriteLine(dialogId is null ? "Waiting for the dialog..." : $"Dialog created: {dialogId}");
+        }
+
+        if (dialogId is null)
+        {
+            Console.WriteLine("Gave up: Altinn did not create the dialog within 3 minutes.");
+            return;
+        }
+
+        // 3. One transmission of each type on the same dialog.
+        foreach (var transmissionType in Enum.GetValues<TransmissionType>())
+        {
+            var result = await messagingService.SendCorrespondence(new DdCorrespondenceDetails
+            {
+                Recipient = recipient,
+                Title = $"Dialogdemo: {transmissionType}",
+                Summary = $"En melding av typen {transmissionType}.",
+                Body = $"# {transmissionType}\nDenne meldingen er lagt til i dialogen som en {transmissionType}-forsendelse.",
+                Sender = "Test Sender",
+                Notification = null,
+                IgnoreReservation = true,
+                SendersReference = runReference,
+                DialogId = dialogId,
+                TransmissionType = transmissionType
+            });
+
+            Console.WriteLine(result.IsSuccess
+                ? $"{transmissionType}: sent {result.Value!.InitalizedCorrespondences.Correspondences.Single().CorrespondenceId}"
+                : $"{transmissionType}: failed: {result.Error}");
+        }
+
+        Console.WriteLine($"Done. Every correspondence in this run has SendersReference {runReference}.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error: {ex}");
+    }
+}
+
+// Prints the raw JSON body Altinn returns for the send (POST) request.
+internal class PrintSendResponseHandler : DelegatingHandler
+{
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        var response = await base.SendAsync(request, cancellationToken);
+        if (request.Method == HttpMethod.Post)
+        {
+            await response.Content.LoadIntoBufferAsync(cancellationToken);
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            var pretty = System.Text.Json.JsonSerializer.Serialize(
+                System.Text.Json.JsonDocument.Parse(body).RootElement,
+                new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            Console.WriteLine($"Send response ({(int)response.StatusCode}):\n{pretty}");
+        }
+        return response;
+    }
 }
