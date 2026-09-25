@@ -453,6 +453,24 @@ The workflow will automatically:
 `altinn_correspondence.nswag`, which embeds the Altinn Correspondence OpenAPI document. Nothing in
 the build regenerates it — it is a manual step.
 
+NSwag is pinned to the version the client was generated with (14.6.3) in the repository's
+`dotnet-tools.json`. From the `Altinn.Dd.Correspondence` folder:
+
+```bash
+dotnet tool restore
+dotnet nswag run altinn_correspondence.nswag
+```
+
+This writes `HttpClients/AltinnCorrespondenceClient.cs` from the embedded document, not from the
+URL in the config, so it is reproducible: run against an unchanged document, the only differences
+are whitespace and the hand-edited enums described below. To pick up API changes, replace the
+embedded document first, and review the regenerated client on its own rather than alongside a
+feature change.
+
+The config sets `useBaseUrl: false`. The client must not carry its own base URL: the environment
+comes from `DdCorrespondenceOptions.Environment`, which sets `HttpClient.BaseAddress` in
+`HostBuilderExtensions`. A generated `BaseUrl` would default to tt02 and take precedence over it.
+
 The config sets `typeAccessModifier: internal`, so the generated contract stays out of this
 package's public surface; the `Models` and `Features` types are the public face. There is one
 exception: `CorrespondencesRoleType` is hand-edited to `public`, because `Features.Search.Query`
@@ -460,6 +478,10 @@ exposes it directly rather than the library keeping a duplicate copy of the enum
 modifier is all-or-nothing, so **a regeneration resets that enum to `internal`** and the build
 fails with `CS0051` on `Features/Search/Query.cs`. Re-apply `public` to it; the generated file
 carries a `HAND-EDITED` comment at that spot.
+
+`EmailContentType` is hand-edited to `public` the same way, because `NotificationDetails` and the
+`Get` overview expose it. A regeneration resets it too and the build fails with `CS0053`; it also
+carries a `HAND-EDITED` comment.
 
 `EnumParityTests` guards the remaining public enums that are copies of generated ones — run the
 tests after regenerating, since an unchecked enum cast cannot report a renumbered member on its

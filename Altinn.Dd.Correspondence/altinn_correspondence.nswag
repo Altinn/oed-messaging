@@ -27,8 +27,8 @@
       "useHttpClientCreationMethod": false,
       "httpClientType": "System.Net.Http.HttpClient",
       "useHttpRequestMessageCreationMethod": false,
-      "useBaseUrl": true,
-      "generateBaseUrlProperty": true,
+      "useBaseUrl": false,
+      "generateBaseUrlProperty": false,
       "generateSyncMethods": false,
       "generatePrepareRequestAndProcessResponseAsAsyncMethods": false,
       "exposeJsonSerializerSettings": false,
@@ -100,7 +100,7 @@
       "templateDirectory": null,
       "serviceHost": null,
       "serviceSchemes": null,
-      "output": null,
+      "output": "HttpClients/AltinnCorrespondenceClient.cs",
       "newLineBehavior": "Auto"
     }
   }
