@@ -218,13 +218,65 @@ public class SendHandlerTests
         // The handler only catches AltinnCorrespondenceException<ProblemDetails>, and the generated
         // client raises the non-generic exception for 409. A duplicate send therefore escapes as an
         // exception instead of a failure result - documented in the package README.
+        // The handler first looks the existing correspondence up (see the recovery test below); this
+        // is the case where that lookup fails.
         using var harness = new HandlerHarness()
-            .RespondsWithProblem(HttpMethod.Post, HttpStatusCode.Conflict, "1034: duplicate idempotent key");
+            .RespondsWithProblem(HttpMethod.Post, HttpStatusCode.Conflict, "1034: duplicate idempotent key")
+            .RespondsWithProblem(HttpMethod.Get, HttpStatusCode.NotFound, "Not found");
         var sut = new CorrespondenceSend.Handler(harness.Client(), harness.Options());
 
         var exception = await Assert.ThrowsAsync<AltinnCorrespondenceException>(() => sut.Handle(Details()));
 
         Assert.Equal((int)HttpStatusCode.Conflict, exception.StatusCode);
+    }
+
+    [Fact]
+    public async Task Send_WhenTheIdempotencyKeyIsAlreadyUsed_ReturnsTheReceiptOfTheExistingCorrespondence()
+    {
+        // A 409 means the send already happened - typically a retry whose first attempt reached
+        // Altinn. The caller gets the receipt of that correspondence instead of an exception.
+        var existingId = Guid.NewGuid();
+        var details = Details();
+        using var harness = new HandlerHarness()
+            .RespondsWithProblem(HttpMethod.Post, HttpStatusCode.Conflict, "1034: duplicate idempotent key")
+            .RespondsWith(HttpMethod.Get, $"*/correspondence/api/v1/correspondence/{existingId}", new CorrespondenceOverviewExt
+            {
+                ResourceId = HandlerHarness.ResourceId,
+                SendersReference = "original-reference",
+                CorrespondenceId = existingId,
+                Status = CorrespondenceStatusExt.Published,
+                Recipient = "0192:987654321"
+            })
+            .RespondsWith(HttpMethod.Get, new CorrespondencesExt { Ids = [existingId] });
+        var sut = new CorrespondenceSend.Handler(harness.Client(), harness.Options());
+
+        var result = await sut.Handle(details);
+
+        Assert.True(result.IsSuccess, result.Error);
+        var correspondence = Assert.Single(result.Value!.InitalizedCorrespondences.Correspondences);
+        Assert.Equal(existingId, correspondence.CorrespondenceId);
+        Assert.Equal(CorrespondenceStatus.Published, correspondence.Status);
+        Assert.Equal("0192:987654321", correspondence.Recipient);
+        Assert.Equal(details.IdempotencyKey, result.Value.IdempotencyKey);
+        Assert.Equal("original-reference", result.Value.SendersReference);
+    }
+
+    [Fact]
+    public async Task Send_WhenTheIdempotencyKeyIsAlreadyUsed_LooksTheCorrespondenceUpByThatKey()
+    {
+        var details = Details();
+        using var harness = new HandlerHarness()
+            .RespondsWithProblem(HttpMethod.Post, HttpStatusCode.Conflict, "1034: duplicate idempotent key")
+            .RespondsWith(HttpMethod.Get, new CorrespondencesExt { Ids = [] });
+        var sut = new CorrespondenceSend.Handler(harness.Client(), harness.Options());
+
+        // Nothing found, so the conflict surfaces as before - but only after the lookup ran.
+        await Assert.ThrowsAsync<AltinnCorrespondenceException>(() => sut.Handle(details));
+
+        Assert.Equal(2, harness.RequestCount);
+        Assert.Contains($"idempotentKey={details.IdempotencyKey}", harness.LastRequestQuery);
+        Assert.Contains($"resourceId={HandlerHarness.ResourceId}", harness.LastRequestQuery);
+        Assert.Contains("role=Sender", harness.LastRequestQuery);
     }
 
     [Fact]

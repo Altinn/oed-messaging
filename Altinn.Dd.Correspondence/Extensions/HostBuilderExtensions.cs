@@ -111,6 +111,11 @@ public static class ServiceCollectionExtensions
                     ApiEnvironment.Production => ApiEndpoints.PlatformProduction,
                     _ => throw new ArgumentOutOfRangeException($"Unknown environment: {correspondenceOptions.Environment}")
                 };
+
+                // The resilience pipeline owns the timeouts. HttpClient's own 100s default equals
+                // the pipeline's total and starts first, so it would win and surface as a
+                // TaskCanceledException instead of CorrespondenceServiceException.
+                httpClient.Timeout = Timeout.InfiniteTimeSpan;
             })
             .AddStandardResilienceHandler(options =>
             {

@@ -230,6 +230,55 @@ public class ResilienceTests
     }
 
     [Fact]
+    public async Task ARetryThatRunsIntoItsOwnIdempotencyKey_ReturnsTheExistingCorrespondence()
+    {
+        // The first attempt reached Altinn, which created the correspondence, but the answer never
+        // made it back. The retry reuses the idempotency key and gets 409. That is a successful
+        // send, not a failure, and must not push the caller into resending under a new key.
+        using var mockHttp = new MockHttpMessageHandler().StubTokenExchange();
+        var existingId = Guid.NewGuid();
+        var endpoint = new Endpoint();
+        endpoint.Register(mockHttp, attempt => attempt == 1 ? HttpStatusCode.ServiceUnavailable : HttpStatusCode.Conflict);
+        // Narrower pattern first: mocks are matched in registration order.
+        mockHttp.When(HttpMethod.Get, $"*/correspondence/api/v1/correspondence/{existingId}")
+                .Respond("application/json", JsonSerializer.Serialize(new
+                {
+                    correspondenceId = existingId,
+                    resourceId = "test-resource",
+                    sendersReference = "reference",
+                    recipient = "0192:987654321",
+                    status = "Published",
+                    created = DateTimeOffset.UtcNow,
+                    statusChanged = DateTimeOffset.UtcNow
+                }));
+        mockHttp.When(HttpMethod.Get, "*/correspondence/api/v1/correspondence*")
+                .Respond("application/json", JsonSerializer.Serialize(new { ids = new[] { existingId } }));
+
+        using var host = BuildHost(mockHttp);
+        var result = await host.Services.GetRequiredService<IDdCorrespondenceService>()
+            .SendCorrespondence(Details());
+
+        Assert.True(result.IsSuccess, result.Error);
+        Assert.Equal(2, endpoint.Attempts);
+        Assert.Equal(existingId, Assert.Single(result.Value!.InitalizedCorrespondences.Correspondences).CorrespondenceId);
+    }
+
+    [Fact]
+    public void HttpClientTimeout_IsLeftToThePipeline()
+    {
+        // HttpClient's default 100s equals the pipeline's total timeout and its timer starts first,
+        // so it would cancel the call as a TaskCanceledException before the pipeline could raise
+        // its own timeout - which the library translates to CorrespondenceServiceException.
+        using var mockHttp = new MockHttpMessageHandler().StubTokenExchange();
+        using var host = BuildHost(mockHttp);
+
+        var httpClient = host.Services.GetRequiredService<IHttpClientFactory>()
+            .CreateClient(nameof(AltinnCorrespondenceClient));
+
+        Assert.Equal(Timeout.InfiniteTimeSpan, httpClient.Timeout);
+    }
+
+    [Fact]
     public async Task ATranslatedFailure_KeepsTheUnderlyingRejectionAsInnerException()
     {
         // Translating must not lose the detail needed to diagnose which limit was hit.

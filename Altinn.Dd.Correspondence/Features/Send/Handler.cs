@@ -64,6 +64,68 @@ internal class Handler(
         {
             return Result<ReceiptExternal>.Failure(e.Result.Detail);
         }
+        catch (AltinnCorrespondenceException e) when (e.StatusCode == (int)System.Net.HttpStatusCode.Conflict)
+        {
+            // 409 means Altinn already holds a correspondence under this idempotency key: either a
+            // retried attempt whose first try reached Altinn but timed out on our side, or a caller
+            // resending. Both are the same send, so answer with the receipt of the one that exists.
+            // If it cannot be found, the conflict surfaces as before.
+            var existing = await FindExisting(correspondenceDetails.IdempotencyKey);
+            if (existing is null)
+            {
+                throw;
+            }
+
+            return Result<ReceiptExternal>.Success(existing);
+        }
+        catch (Polly.ExecutionRejectedException e)
+        {
+            throw Exceptions.ResilienceFailure.Translate(e);
+        }
+    }
+
+    private async Task<ReceiptExternal?> FindExisting(Guid idempotencyKey)
+    {
+        try
+        {
+            var search = await httpClient.CorrespondenceGETAsync(
+                resourceId: _correspondenceOptions.ResourceId,
+                from: null,
+                to: null,
+                status: null,
+                role: CorrespondencesRoleType.Sender,
+                onBehalfOf: null,
+                sendersReference: null,
+                idempotentKey: idempotencyKey);
+            if (search.Ids is not { Count: > 0 } ids)
+            {
+                return null;
+            }
+
+            var overviews = new List<CorrespondenceOverviewExt>();
+            foreach (var id in ids)
+            {
+                overviews.Add(await httpClient.CorrespondenceGET2Async(id));
+            }
+
+            // The notification orders are not part of the overview, so a recovered receipt has none.
+            var correspondences = overviews
+                .Select(o => new InitializedCorrespondence(o.CorrespondenceId, (CorrespondenceStatus)o.Status, o.Recipient, Notifications: null))
+                .ToList();
+            return new ReceiptExternal(
+                new InitializedCorrespondences(correspondences, []),
+                idempotencyKey,
+                overviews[0].SendersReference);
+        }
+        // Whatever goes wrong with the lookup, the caller is better served by the original conflict.
+        catch (AltinnCorrespondenceException)
+        {
+            return null;
+        }
+        catch (HttpRequestException)
+        {
+            return null;
+        }
         catch (Polly.ExecutionRejectedException e)
         {
             throw Exceptions.ResilienceFailure.Translate(e);

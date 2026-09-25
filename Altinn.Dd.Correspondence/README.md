@@ -155,6 +155,8 @@ senders reference.
 Returns the ids of matching correspondences. `ResourceId` and `Role` are **required** — a query
 missing either fails locally without calling the API. `From`, `To`, `Status`, `OnBehalfOf`,
 `SendersReference` and `IdempotencyKey` are optional filters.
+`From` and `To` are sent to Altinn in UTC, so a `DateTimeOffset` in any offset selects the window
+it names.
 
 `Role` is of type `Altinn.Dd.Correspondence.HttpClients.CorrespondencesRoleType`:
 
@@ -212,7 +214,7 @@ exception — but only for the statuses the generated client documents for that 
 
 | Operation | Becomes a failure result | Throws `AltinnCorrespondenceException` |
 | --- | --- | --- |
-| `SendCorrespondence` | 400, 401, 404, 422 | 409 (duplicate idempotency key), anything else |
+| `SendCorrespondence` | 400, 401, 404, 422 | 409 (duplicate idempotency key) only when the existing correspondence cannot be found, anything else |
 | `Search` | 400, 401 | anything else, including 404 |
 | `Get` | 400, 401, 404 | anything else |
 
@@ -221,6 +223,13 @@ transport failure — surfaces as an exception, so keep a try/catch around the c
 checking the result. Rejections from the resilience pipeline arrive as
 `CorrespondenceServiceException`; everything else from the API arrives as
 `AltinnCorrespondenceException`.
+
+A 409 from `SendCorrespondence` means Altinn already holds a correspondence under that idempotency
+key — usually a retry whose first attempt reached Altinn but timed out on the way back, or a caller
+resending. Either way the send has happened, so the library looks the correspondence up by the
+key and returns a success result with its receipt: its id, status, recipient and senders reference,
+but no notification orders, since those are not part of the lookup. Only if the lookup fails or
+finds nothing does the 409 throw `AltinnCorrespondenceException` as before.
 
 ```csharp
 try
@@ -267,6 +276,10 @@ endpoint is backed away from rather than hammered.
 
 **Behaviour:**
 - Retries execute transparently without duplicate messages thanks to the API's idempotency keys
+- A retry that gets 409 because its first attempt already reached Altinn returns the existing
+  correspondence's receipt rather than failing — see [Error Handling](#error-handling)
+- `HttpClient.Timeout` is set to infinite, so the timeouts above are the only ones that apply and
+  a timeout always surfaces as `CorrespondenceServiceException`
 - Responses from retried attempts are disposed, so retrying does not leak connections
 - After all retries are exhausted, the last response is handled as described in
   [Error Handling](#error-handling)

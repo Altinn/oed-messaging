@@ -31,8 +31,10 @@ internal class Handler : IHandler<Query, Result<IEnumerable<Guid>>>
             // Sjekk hva den returnerer ordentlig
             var response = await _httpClient.CorrespondenceGETAsync(
                 resourceId: query.ResourceId,
-                from: query.From,
-                to: query.To,
+                // The generated client writes these without an offset and Altinn reads them as
+                // UTC, so a local time would shift the window by the caller's offset.
+                from: query.From?.ToUniversalTime(),
+                to: query.To?.ToUniversalTime(),
                 status: (CorrespondenceStatusExt?)query.Status,
                 role: query.Role,
                 onBehalfOf: query.OnBehalfOf,

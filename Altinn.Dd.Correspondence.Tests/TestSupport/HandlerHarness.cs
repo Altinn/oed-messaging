@@ -37,13 +37,20 @@ internal sealed class HandlerHarness : IDisposable
     public HandlerHarness RespondsWith<T>(HttpMethod method, T responseBody)
         => Responds(method, HttpStatusCode.OK, JsonSerializer.Serialize(responseBody));
 
+    /// <summary>
+    /// Responds 200 with <paramref name="responseBody"/> to requests matching <paramref name="url"/>.
+    /// Mocks are matched in registration order, so register a narrower pattern before a wider one.
+    /// </summary>
+    public HandlerHarness RespondsWith<T>(HttpMethod method, string url, T responseBody)
+        => Responds(method, HttpStatusCode.OK, JsonSerializer.Serialize(responseBody), url);
+
     /// <summary>Responds with an RFC 7807 problem document, the shape the client turns into a failure result.</summary>
     public HandlerHarness RespondsWithProblem(HttpMethod method, HttpStatusCode status, string detail)
         => Responds(method, status, JsonSerializer.Serialize(new { type = "about:blank", title = "Bad Request", status = (int)status, detail }));
 
-    private HandlerHarness Responds(HttpMethod method, HttpStatusCode status, string json)
+    private HandlerHarness Responds(HttpMethod method, HttpStatusCode status, string json, string url = "*/correspondence/api/v1/correspondence*")
     {
-        _mockHttp.When(method, "*/correspondence/api/v1/correspondence*")
+        _mockHttp.When(method, url)
                  .Respond(async request =>
                  {
                      RequestCount++;

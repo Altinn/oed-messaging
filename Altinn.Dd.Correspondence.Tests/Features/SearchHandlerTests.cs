@@ -79,6 +79,27 @@ public class SearchHandlerTests
     }
 
     [Fact]
+    public async Task Search_SendsFromAndToAsUtc()
+    {
+        // The generated client formats the window without an offset, so a time given in another
+        // offset has to be converted first or the window shifts by that offset.
+        using var harness = new HandlerHarness().RespondsWith(HttpMethod.Get, new CorrespondencesExt { Ids = [] });
+        var sut = new Handler(harness.Client());
+        var oslo = TimeSpan.FromHours(2);
+
+        var result = await sut.Handle(AValidQuery() with
+        {
+            From = new DateTimeOffset(2026, 9, 25, 16, 0, 0, oslo),
+            To = new DateTimeOffset(2026, 9, 25, 18, 30, 0, oslo)
+        });
+
+        Assert.True(result.IsSuccess, result.Error);
+        var query = Uri.UnescapeDataString(harness.LastRequestQuery!);
+        Assert.Contains("from=2026-09-25T14:00:00", query);
+        Assert.Contains("to=2026-09-25T16:30:00", query);
+    }
+
+    [Fact]
     public async Task Search_WhenApiRejectsTheRequest_ReturnsFailureCarryingTheProblemDetail()
     {
         using var harness = new HandlerHarness()

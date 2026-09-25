@@ -61,6 +61,20 @@ See [Breaking changes in 3.0.0](README.md#breaking-changes-in-300) for migration
   leaking their connection.
 - `Microsoft.Extensions.DependencyInjection` and `Microsoft.Extensions.Http` are pinned to 10.0.12
   instead of the `10.0.*` wildcard.
+- A 409 from `SendCorrespondence` (duplicate idempotency key) now returns a success result with the
+  receipt of the existing correspondence, looked up by the key, instead of throwing. It still throws
+  `AltinnCorrespondenceException` when the lookup finds nothing. A recovered receipt carries no
+  notification orders. See [Error Handling](README.md#error-handling).
+
+### Fixed
+
+- A retry whose first attempt reached Altinn no longer turns a delivered correspondence into an
+  exception: the retry's 409 is answered with the existing correspondence (see Changed).
+- `HttpClient.Timeout` is now infinite. Its 100s default matched the pipeline's total timeout and
+  fired first, so a slow call surfaced as `TaskCanceledException` instead of
+  `CorrespondenceServiceException` (3.0.0-beta and beta.2).
+- `Search` sends `From` and `To` in UTC. They were written without their offset, so a local time
+  shifted the search window by the caller's UTC offset.
 
 ### Removed
 

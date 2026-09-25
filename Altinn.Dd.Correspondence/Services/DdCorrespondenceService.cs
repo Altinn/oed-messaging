@@ -16,8 +16,10 @@ public interface IDdCorrespondenceService
     /// </summary>
     /// <param name="correspondence">The correspondence details including recipient, content, and notifications.</param>
     /// <returns>A receipt indicating whether the correspondence was successfully created.</returns>
-    /// <remarks>An API rejection is returned as a failure result rather than thrown. A duplicate
-    /// idempotency key (409) and any unexpected status still throw; see the package README.</remarks>
+    /// <remarks>An API rejection is returned as a failure result rather than thrown. Any unexpected
+    /// status still throws; see the package README.
+    /// A duplicate idempotency key (409) means the correspondence already exists, so it returns the
+    /// receipt of that correspondence as a success, and only throws when it cannot be found.</remarks>
     Task<Result<ReceiptExternal>> SendCorrespondence(DdCorrespondenceDetails correspondence);
 
     /// <summary>
