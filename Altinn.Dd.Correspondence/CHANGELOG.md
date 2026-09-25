@@ -57,9 +57,78 @@ See [Breaking changes in 3.0.0](README.md#breaking-changes-in-300) for migration
 - The `Polly`, `Microsoft.Extensions.Http.Polly` and `System.ComponentModel.Annotations` package
   dependencies.
 
-## [2.2.0]
+## [2.2.0] - 2026-08-27
 
-Changes before 3.0.0 were not recorded in this file.
+The entries below were reconstructed from the release tags after the fact, so they are brief.
+
+### Changed
+
+- Updated `Altinn.ApiClients.Maskinporten` to 10.1.0 and `Polly` to 8.7.0. The
+  `Microsoft.Extensions.*` references float on `10.0.*`.
+- NuGet lockfiles are committed, so transitive advisories are visible.
+
+## [2.1.x] - 2026-02-17 (pre-release)
+
+Covers `2.1.1-alpha` and `2.1.2-alpha`.
+
+### Added
+
+- `IDdCorrespondenceService.Search`, which finds correspondence ids by resource, role, status,
+  date range, senders reference or idempotency key.
+- `IDdCorrespondenceService.Get`, which returns a `CorrespondenceOverview` for one correspondence.
+- The `altinn:correspondence.read` scope, which `Search` and `Get` need.
+
+## [2.0.x] - 2026-01-26 (pre-release)
+
+Covers `2.0.0-alpha` to `2.0.10-alpha`.
+
+### Breaking
+
+- `IDdMessagingService.SendMessage(DdMessageDetails)` is replaced by
+  `IDdCorrespondenceService.SendCorrespondence(DdCorrespondenceDetails)`. It returns a
+  `CorrespondenceResult` instead of throwing on API rejections.
+- Registration is now `AddDdCorrespondenceService`, configured through `DdCorrespondenceOptions`
+  (Maskinporten settings, resource id and `ApiEnvironment`). It replaces
+  `AddDdMessagingService<TClientDefinition>` and the `Settings` / `IDdNotificationSettings` model.
+- `ReceiptExternal` is simplified to the created correspondences and attachment ids, the
+  idempotency key and the senders reference, and it now carries the `CorrespondenceId`.
+
+### Added
+
+- Targets .NET 8, 9 and 10.
+- Maskinporten authentication with an X.509 certificate as an alternative to a JWK.
+- An `AddDdCorrespondenceService` overload that takes options in code instead of a configuration
+  section path.
+- Validation of the options at startup.
+
+### Changed
+
+- The Maskinporten token is exchanged for an Altinn token, and only the Altinn token is sent to
+  the API.
+
+## [1.0.1] - 2025-11-13
+
+### Breaking
+
+- Registration moved from `IHostBuilder.AddDdCorrespondence(settings, accessTokenProvider)` to
+  `IServiceCollection.AddDdMessagingService<TClientDefinition>(maskinportenSection,
+  correspondenceSection)`. The library now handles Maskinporten authentication itself, so
+  `IAccessTokenProvider` and `BearerTokenHandler` are removed.
+- Targets .NET 8 only. .NET 9 support was dropped.
+
+### Changed
+
+- Retries are limited to 408, 429, 5xx and transport failures. Other unsuccessful responses are no
+  longer retried.
+
+## [1.0.0] - 2025-10-29
+
+- First release: sends correspondence through the Altinn 3 Correspondence API behind the
+  `IDdMessagingService` interface carried over from `Altinn.Oed.Messaging`.
 
 [3.0.0]: https://github.com/Altinn/oed-messaging/compare/correspondence-v2.2.0...HEAD
-[2.2.0]: https://github.com/Altinn/oed-messaging/releases/tag/correspondence-v2.2.0
+[2.2.0]: https://github.com/Altinn/oed-messaging/compare/correspondence-v2.1.2-alpha...correspondence-v2.2.0
+[2.1.x]: https://github.com/Altinn/oed-messaging/compare/correspondence-v2.0.10-alpha...correspondence-v2.1.2-alpha
+[2.0.x]: https://github.com/Altinn/oed-messaging/compare/correspondence-v1.0.1...correspondence-v2.0.10-alpha
+[1.0.1]: https://github.com/Altinn/oed-messaging/compare/correspondence-v1.0.0...correspondence-v1.0.1
+[1.0.0]: https://github.com/Altinn/oed-messaging/releases/tag/correspondence-v1.0.0
