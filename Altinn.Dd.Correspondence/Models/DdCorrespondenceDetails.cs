@@ -47,11 +47,6 @@ public class DdCorrespondenceDetails
     public NotificationDetails? Notification { get; set; } = new();
 
     /// <summary>
-    /// Gets or sets the allow forwarding flag (default is false)
-    /// </summary>
-    public bool AllowForwarding { get; set; }
-
-    /// <summary>
     /// Gets or sets the idempotency key to prevent duplicate correspondence creation.
     /// If not provided, a new GUID will be generated automatically.
     /// </summary>

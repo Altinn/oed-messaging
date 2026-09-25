@@ -80,7 +80,6 @@ var messageDetails = new DdCorrespondenceDetails
         EmailBody = "Hei. Du har mottatt en ny melding i Altinn. Logg inn for å lese den.",
         SmsText = "Du har en ny melding i Altinn. Logg inn for å lese."
     },
-    AllowForwarding = false,
     IgnoreReservation = true,
     IdempotencyKey = Guid.NewGuid(),
     SendersReference = "sender_ref_123"

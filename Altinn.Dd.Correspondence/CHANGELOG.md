@@ -37,6 +37,8 @@ See [Breaking changes in 3.0.0](README.md#breaking-changes-in-300) for migration
 - `CorrespondenceServiceException` is now thrown when the resilience pipeline rejects a request
   (timeout, open circuit or concurrency limit). These cases throw rather than return a failure
   result. Before 3.0.0 nothing threw this exception.
+- `DdCorrespondenceDetails.AllowForwarding` is removed. It never had an effect in Altinn 3: the
+  Correspondence API has no forwarding flag, so the value was never sent. Delete the assignment.
 
 ### Added
 

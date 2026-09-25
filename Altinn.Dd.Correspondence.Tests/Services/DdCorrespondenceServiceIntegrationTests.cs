@@ -72,7 +72,6 @@ public class DdCorrespondenceServiceIntegrationTests
             Title = "Integration Test",
             Body = "Testing DI wiring",
             IdempotencyKey = Guid.NewGuid(),
-            AllowForwarding = false,
             IgnoreReservation = false,
         };
 
