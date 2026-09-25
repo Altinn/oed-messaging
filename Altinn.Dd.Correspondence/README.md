@@ -6,6 +6,9 @@ Maskinporten authentication.
 
 Targets `net10.0`, `net9.0` and `net8.0`.
 
+See the [changelog](https://github.com/Altinn/oed-messaging/blob/main/Altinn.Dd.Correspondence/CHANGELOG.md)
+for what changed in each release.
+
 ## Quick Start
 
 ### 1. Install Packages
@@ -263,6 +266,10 @@ This example serves as both a testing tool and a reference implementation for in
 
 ## Breaking changes in 3.0.0
 
+This section has migration examples for the breaking changes. The
+[changelog](https://github.com/Altinn/oed-messaging/blob/main/Altinn.Dd.Correspondence/CHANGELOG.md)
+lists every change in the release.
+
 ### Two enums moved namespace
 
 `CorrespondencesRoleType` and `EmailContentType` moved from `Altinn.Dd.Correspondence.Models` (and,
@@ -416,6 +423,10 @@ The workflow (`release-correspondence.yaml`) triggers on:
 ### Creating a Release
 
 To publish a new version to NuGet.org:
+
+1. Update `CHANGELOG.md`: move the entries for the version you're releasing under its heading, set
+   the release date and point its compare link at the new tag.
+2. Create and push the tag:
 
 ```bash
 # Create and push a tag
