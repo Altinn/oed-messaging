@@ -3534,12 +3534,7 @@ namespace Altinn.Dd.Correspondence.HttpClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    // HAND-EDITED: made public so the public Search query can expose it directly instead of the
-    // library keeping a duplicate copy. NSwag's typeAccessModifier is all-or-nothing, so
-    // regenerating this file from altinn_correspondence.nswag will reset this to "internal" and
-    // break the build on Features/Search/Query.cs (CS0051). Re-apply this modifier after any
-    // regeneration.
-    public enum CorrespondencesRoleType
+    internal enum CorrespondencesRoleType
     {
 
         [System.Runtime.Serialization.EnumMember(Value = @"Recipient")]
@@ -3575,11 +3570,7 @@ namespace Altinn.Dd.Correspondence.HttpClients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    // HAND-EDITED: made public so NotificationDetails and the Get overview can expose it
-    // directly instead of the library keeping duplicate copies. NSwag's typeAccessModifier is
-    // all-or-nothing, so regenerating this file resets it to "internal" and breaks the build
-    // (CS0053). Re-apply this modifier after any regeneration.
-    public enum EmailContentType
+    internal enum EmailContentType
     {
 
         [System.Runtime.Serialization.EnumMember(Value = @"Plain")]

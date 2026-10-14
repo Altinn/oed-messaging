@@ -1,4 +1,3 @@
-using Altinn.Dd.Correspondence.HttpClients;
 using Altinn.Dd.Correspondence.Models;
 
 namespace Altinn.Dd.Correspondence.Features.Search;

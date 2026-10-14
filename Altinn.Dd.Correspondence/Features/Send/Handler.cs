@@ -8,7 +8,7 @@ namespace Altinn.Dd.Correspondence.Features.Send;
 
 internal class Handler(
     AltinnCorrespondenceClient httpClient,
-    IOptionsMonitor<DdCorrespondenceOptions> optionsMonitor) : IHandler<DdCorrespondenceDetails, Result<ReceiptExternal>>
+    IOptionsMonitor<DdCorrespondenceOptions> optionsMonitor) : IHandler<DdCorrespondenceDetails, CorrespondenceResult<ReceiptExternal>>
 {
     private const string LanguageCode = "nb";
     private const string SenderReferencePrefix = "EXT_DD_SHIP_";
@@ -19,12 +19,12 @@ internal class Handler(
 
     private readonly DdCorrespondenceOptions _correspondenceOptions = optionsMonitor.CurrentValue;
 
-    public async Task<Result<ReceiptExternal>> Handle(DdCorrespondenceDetails correspondenceDetails)
+    public async Task<CorrespondenceResult<ReceiptExternal>> Handle(DdCorrespondenceDetails correspondenceDetails)
     {
         // Altinn rejects this too, but only after a round trip.
         if (correspondenceDetails.TransmissionType is not null && correspondenceDetails.DialogId is null)
         {
-            return Result<ReceiptExternal>.Failure(TransmissionTypeWithoutDialogId);
+            return CorrespondenceResult<ReceiptExternal>.Failure(TransmissionTypeWithoutDialogId);
         }
 
         var sendersReference = correspondenceDetails.SendersReference ?? $"{SenderReferencePrefix}{correspondenceDetails.IdempotencyKey}";
@@ -58,11 +58,11 @@ internal class Handler(
 
             var result = await httpClient.CorrespondencePOSTAsync(correspondenceRequest);
             var receipt = new ReceiptExternal(result.ToDto(), correspondenceDetails.IdempotencyKey, sendersReference);
-            return Result<ReceiptExternal>.Success(receipt);
+            return CorrespondenceResult<ReceiptExternal>.Success(receipt);
         }
         catch (AltinnCorrespondenceException<ProblemDetails> e)
         {
-            return Result<ReceiptExternal>.Failure(e.Result.Detail);
+            return CorrespondenceResult<ReceiptExternal>.Failure(e.Result.Detail);
         }
         catch (AltinnCorrespondenceException e) when (e.StatusCode == (int)System.Net.HttpStatusCode.Conflict)
         {
@@ -76,7 +76,7 @@ internal class Handler(
                 throw;
             }
 
-            return Result<ReceiptExternal>.Success(existing);
+            return CorrespondenceResult<ReceiptExternal>.Success(existing);
         }
         catch (Polly.ExecutionRejectedException e)
         {
@@ -93,7 +93,7 @@ internal class Handler(
                 from: null,
                 to: null,
                 status: null,
-                role: CorrespondencesRoleType.Sender,
+                role: HttpClients.CorrespondencesRoleType.Sender,
                 onBehalfOf: null,
                 sendersReference: null,
                 idempotentKey: idempotencyKey);
@@ -117,7 +117,8 @@ internal class Handler(
                 idempotencyKey,
                 overviews[0].SendersReference);
         }
-        // Whatever goes wrong with the lookup, the caller is better served by the original conflict.
+        // When Altinn or the transport fails the lookup, the caller is better served by the original
+        // conflict. A rejection by the resilience pipeline is translated, as on every other call.
         catch (AltinnCorrespondenceException)
         {
             return null;
@@ -191,7 +192,7 @@ internal class Handler(
         {
             notification.EmailSubject = notificationDetails.EmailSubject;
             notification.EmailBody = notificationDetails.EmailBody;
-            notification.EmailContentType = notificationDetails.EmailContentType;
+            notification.EmailContentType = (HttpClients.EmailContentType)notificationDetails.EmailContentType;
         }
 
         // Set SMS notification if provided

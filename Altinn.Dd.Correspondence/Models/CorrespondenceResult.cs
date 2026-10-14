@@ -1,16 +1,20 @@
-namespace Altinn.Dd.Correspondence;
+namespace Altinn.Dd.Correspondence.Models;
 
 /// <summary>
 /// The outcome of a correspondence operation: either a value, or the detail of an API rejection.
 /// </summary>
 /// <remarks>
-/// An API rejection that carries a problem document is reported here rather than thrown. Failures
-/// that never reached Altinn - a timeout, an open circuit - throw
-/// <see cref="Exceptions.CorrespondenceServiceException"/> instead, and any other status from the
-/// API throws. See the package README for which statuses take which route.
+/// An API rejection that carries a problem document is reported here rather than thrown. A
+/// rejection by the resilience pipeline - a timeout, an open circuit, the concurrency limit - throws
+/// <see cref="Exceptions.CorrespondenceServiceException"/> instead, a transport failure throws
+/// <see cref="HttpRequestException"/>, and any other status from the API throws. See the package
+/// README for which statuses take which route.
+///
+/// Named <c>CorrespondenceResult</c> rather than <c>Result</c> so it does not clash with the
+/// <c>Result&lt;T&gt;</c> of other libraries a caller may import alongside this one.
 /// </remarks>
 /// <typeparam name="T">The value a successful operation produces.</typeparam>
-public sealed class Result<T>
+public sealed class CorrespondenceResult<T>
 {
     /// <summary>Gets a value indicating whether the operation succeeded.</summary>
     public bool IsSuccess { get; }
@@ -24,7 +28,7 @@ public sealed class Result<T>
     /// <summary>Gets the rejection detail reported by the API, or an empty string on success.</summary>
     public string Error { get; }
 
-    private Result(
+    private CorrespondenceResult(
         bool isSuccess,
         T? value,
         string error)
@@ -37,13 +41,13 @@ public sealed class Result<T>
     /// <summary>Creates a successful result carrying <paramref name="value"/>.</summary>
     /// <param name="value">The value the operation produced.</param>
     /// <returns>A successful result.</returns>
-    public static Result<T> Success(T value) =>
+    public static CorrespondenceResult<T> Success(T value) =>
         new(true, value, string.Empty);
 
     /// <summary>Creates a failed result carrying <paramref name="error"/>.</summary>
     /// <param name="error">The rejection detail reported by the API.</param>
     /// <returns>A failed result.</returns>
-    public static Result<T> Failure(string error) =>
+    public static CorrespondenceResult<T> Failure(string error) =>
         new(false, default, error);
 
     /// <summary>

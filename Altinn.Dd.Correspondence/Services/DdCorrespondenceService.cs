@@ -19,22 +19,25 @@ public interface IDdCorrespondenceService
     /// <remarks>An API rejection is returned as a failure result rather than thrown. Any unexpected
     /// status still throws; see the package README.
     /// A duplicate idempotency key (409) means the correspondence already exists, so it returns the
-    /// receipt of that correspondence as a success, and only throws when it cannot be found.</remarks>
-    Task<Result<ReceiptExternal>> SendCorrespondence(DdCorrespondenceDetails correspondence);
+    /// receipt of that correspondence as a success. That receipt carries the correspondence's
+    /// current status and no notification orders. The 409 is thrown when the lookup finds nothing or
+    /// fails; when the resilience pipeline rejects the lookup,
+    /// <see cref="Exceptions.CorrespondenceServiceException"/> is thrown instead.</remarks>
+    Task<CorrespondenceResult<ReceiptExternal>> SendCorrespondence(DdCorrespondenceDetails correspondence);
 
     /// <summary>
     /// Finds the ids of correspondences matching a query.
     /// </summary>
     /// <param name="query">The search filters. ResourceId and Role are required.</param>
     /// <returns>The matching correspondence ids, or a failure result.</returns>
-    Task<Result<IEnumerable<Guid>>> Search(Query query);
+    Task<CorrespondenceResult<IEnumerable<Guid>>> Search(Query query);
 
     /// <summary>
     /// Retrieves the overview of a single correspondence.
     /// </summary>
     /// <param name="request">The correspondence to retrieve.</param>
     /// <returns>The correspondence overview, or a failure result.</returns>
-    Task<Result<CorrespondenceOverview>> Get(Request request);
+    Task<CorrespondenceResult<CorrespondenceOverview>> Get(Request request);
 
     /// <summary>
     /// Retrieves the id of the Dialogporten dialog a correspondence belongs to, so later
@@ -43,21 +46,22 @@ public interface IDdCorrespondenceService
     /// <param name="request">The correspondence whose dialog to look up.</param>
     /// <returns>The dialog id, <c>null</c> if Altinn has not created the dialog yet, or a failure
     /// result.</returns>
-    /// <remarks>Altinn creates the dialog after the correspondence is published, so a lookup
-    /// straight after sending returns <c>null</c>. Retry until it returns an id.</remarks>
-    Task<Result<Guid?>> GetDialogId(Request request);
+    /// <remarks>Altinn creates the dialog in the background after accepting the send, so a lookup
+    /// straight after sending usually returns <c>null</c>. Retry until it returns an id, with a
+    /// deadline: if the dialog cannot be created, Altinn fails the correspondence and the id stays
+    /// <c>null</c>. <see cref="Get"/> shows that as <c>CorrespondenceStatus.Failed</c>.</remarks>
+    Task<CorrespondenceResult<Guid?>> GetDialogId(Request request);
 }
 
 /// <summary>
 /// The <see cref="DdCorrespondenceService"/> class is an implementation of the <see cref="IDdCorrespondenceService"/> interface and represents
-/// a wrapper around the Altinn 3 Correspondence API client. This service maintains compatibility with the existing Altinn 2 interface
-/// while leveraging the modern Altinn 3 REST API for improved performance and reliability.
+/// a wrapper around the Altinn 3 Correspondence API client. Each operation forwards to its feature handler.
 /// </summary>
 public sealed class DdCorrespondenceService : IDdCorrespondenceService
 {
-    private readonly IHandler<DdCorrespondenceDetails, Result<ReceiptExternal>> _send;
-    private readonly IHandler<Query, Result<IEnumerable<Guid>>> _search;
-    private readonly IHandler<Request, Result<CorrespondenceOverview>> _get;
+    private readonly IHandler<DdCorrespondenceDetails, CorrespondenceResult<ReceiptExternal>> _send;
+    private readonly IHandler<Query, CorrespondenceResult<IEnumerable<Guid>>> _search;
+    private readonly IHandler<Request, CorrespondenceResult<CorrespondenceOverview>> _get;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DdCorrespondenceService"/> class.
@@ -66,9 +70,9 @@ public sealed class DdCorrespondenceService : IDdCorrespondenceService
     /// <param name="search">Handler for the search operation.</param>
     /// <param name="get">Handler for the get operation.</param>
     public DdCorrespondenceService(
-        IHandler<DdCorrespondenceDetails, Result<ReceiptExternal>> send,
-        IHandler<Query, Result<IEnumerable<Guid>>> search,
-        IHandler<Request, Result<CorrespondenceOverview>> get)
+        IHandler<DdCorrespondenceDetails, CorrespondenceResult<ReceiptExternal>> send,
+        IHandler<Query, CorrespondenceResult<IEnumerable<Guid>>> search,
+        IHandler<Request, CorrespondenceResult<CorrespondenceOverview>> get)
     {
         _send = send;
         _search = search;
@@ -76,20 +80,20 @@ public sealed class DdCorrespondenceService : IDdCorrespondenceService
     }
 
     /// <inheritdoc />
-    public Task<Result<ReceiptExternal>> SendCorrespondence(DdCorrespondenceDetails correspondence)
+    public Task<CorrespondenceResult<ReceiptExternal>> SendCorrespondence(DdCorrespondenceDetails correspondence)
         => _send.Handle(correspondence);
 
     /// <inheritdoc />
-    public Task<Result<IEnumerable<Guid>>> Search(Query query)
+    public Task<CorrespondenceResult<IEnumerable<Guid>>> Search(Query query)
         => _search.Handle(query);
 
     /// <inheritdoc />
-    public Task<Result<CorrespondenceOverview>> Get(Request request)
+    public Task<CorrespondenceResult<CorrespondenceOverview>> Get(Request request)
         => _get.Handle(request);
 
     /// <inheritdoc />
-    public async Task<Result<Guid?>> GetDialogId(Request request)
+    public async Task<CorrespondenceResult<Guid?>> GetDialogId(Request request)
         => (await _get.Handle(request)).Match(
-            onSuccess: overview => Result<Guid?>.Success(overview.DialogId),
-            onFailure: Result<Guid?>.Failure);
+            onSuccess: overview => CorrespondenceResult<Guid?>.Success(overview.DialogId),
+            onFailure: CorrespondenceResult<Guid?>.Failure);
 }

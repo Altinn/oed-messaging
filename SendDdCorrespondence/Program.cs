@@ -6,7 +6,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Altinn.Dd.Correspondence.Services;
 using Altinn.Dd.Correspondence.Features.Search;
-using Altinn.Dd.Correspondence.HttpClients;
 
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureAppConfiguration(config => config.AddUserSecrets<Program>())

@@ -50,6 +50,10 @@ public class DdCorrespondenceDetails
     /// Gets or sets the idempotency key to prevent duplicate correspondence creation.
     /// If not provided, a new GUID will be generated automatically.
     /// </summary>
+    /// <remarks>
+    /// The generated key only protects the retries made within one call. To make a resend after a
+    /// crash or a queue redelivery safe, persist the key with the work item and set it here.
+    /// </remarks>
     public Guid IdempotencyKey { get; set; } = Guid.NewGuid();
 
     /// <summary>
@@ -69,8 +73,8 @@ public class DdCorrespondenceDetails
     /// the same recipient and to a resource with the same service owner.
     /// </summary>
     /// <remarks>
-    /// Altinn creates a correspondence's dialog after the correspondence is published, so the id is
-    /// not in the send receipt. Read it later with <see cref="Services.IDdCorrespondenceService.GetDialogId"/>.
+    /// Altinn creates a correspondence's dialog in the background after accepting the send, so the
+    /// id is not in the send receipt. Read it later with <see cref="Services.IDdCorrespondenceService.GetDialogId"/>.
     /// </remarks>
     public Guid? DialogId { get; set; }
 

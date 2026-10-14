@@ -4,6 +4,8 @@ using Altinn.Dd.Correspondence.Models;
 using System.Net;
 using Altinn.Dd.Correspondence.Tests.TestSupport;
 
+using CorrespondencesRoleType = Altinn.Dd.Correspondence.Models.CorrespondencesRoleType;
+
 
 namespace Altinn.Dd.Correspondence.Tests.Features;
 

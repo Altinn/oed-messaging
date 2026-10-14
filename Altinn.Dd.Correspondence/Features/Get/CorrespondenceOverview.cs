@@ -55,8 +55,15 @@ public record CorrespondenceOverview(
     /// <summary>
     /// The id of the Dialogporten dialog this correspondence belongs to, taken from its
     /// <see cref="ReferenceType.DialogportenDialogId"/> external reference. Null until Altinn has
-    /// created the dialog, which happens after the correspondence is published.
+    /// created the dialog, which it does in the background after accepting the send and before
+    /// publishing the correspondence. If the dialog cannot be created, Altinn fails the
+    /// correspondence and this stays null. With several such references, the first that is a valid
+    /// id is returned.
     /// </summary>
+    /// <remarks>
+    /// For a correspondence sent to an existing dialog this is the dialog id the sender supplied, and
+    /// it is set straight away. It does not show whether the transmission has been created yet.
+    /// </remarks>
     public Guid? DialogId =>
         ExternalReferences?
             .Where(reference => reference.ReferenceType == ReferenceType.DialogportenDialogId)
@@ -222,12 +229,12 @@ public record InitializeCorrespondenceNotification(
     NotificationTemplate NotificationTemplate,
     string? EmailSubject,
     string? EmailBody,
-    HttpClients.EmailContentType EmailContentType,
+    Models.EmailContentType EmailContentType,
     string? SmsBody,
     bool SendReminder,
     string? ReminderEmailSubject,
     string? ReminderEmailBody,
-    HttpClients.EmailContentType ReminderEmailContentType,
+    Models.EmailContentType ReminderEmailContentType,
     string? ReminderSmsBody,
     NotificationChannel NotificationChannel,
     NotificationChannel ReminderNotificationChannel,

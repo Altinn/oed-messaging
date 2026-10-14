@@ -61,7 +61,14 @@ internal sealed class HandlerHarness : IDisposable
     /// </summary>
     public HandlerHarness Throws(HttpMethod method, Exception exception, string url = "*/correspondence/api/v1/correspondence*")
     {
-        _mockHttp.When(method, url).Throw(exception);
+        _mockHttp.When(method, url)
+                 .Respond(new Func<HttpRequestMessage, HttpResponseMessage>(request =>
+                 {
+                     RequestCount++;
+                     LastRequestQuery = request.RequestUri?.Query;
+                     LastRequestPath = request.RequestUri?.AbsolutePath;
+                     throw exception;
+                 }));
         return this;
     }
 
