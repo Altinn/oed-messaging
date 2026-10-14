@@ -232,7 +232,7 @@ exception — but only for the statuses the generated client documents for that 
 
 | Operation | Becomes a failure result | Throws `AltinnCorrespondenceException` |
 | --- | --- | --- |
-| `SendCorrespondence` | 400, 401, 404, 422 | 409 (duplicate idempotency key) only when the existing correspondence cannot be looked up, anything else |
+| `SendCorrespondence` | 400, 401, 404, 422 | 409 (duplicate idempotency key), anything else |
 | `Search` | 400, 401 | anything else, including 404 |
 | `Get` | 400, 401, 404 | anything else |
 
@@ -245,15 +245,11 @@ checking the result. Rejections from the resilience pipeline arrive as
 
 A 409 from `SendCorrespondence` means Altinn already holds a correspondence under that idempotency
 key — usually a retry whose first attempt reached Altinn but timed out on the way back, or a caller
-resending. Either way the send has happened, so the library looks the correspondence up by the
-key and returns a success result with its receipt: its id, current status, recipient and senders
-reference, but no notification orders, since those are not part of the lookup. If the lookup finds
-nothing, or Altinn or the transport fails it, the 409 throws `AltinnCorrespondenceException` as
-before; if the resilience pipeline rejects the lookup, `CorrespondenceServiceException` is thrown.
-
-The lookup goes by the key alone and does not compare content: a key reused for a different
-message returns the earlier correspondence's receipt, and the new message is not sent. Use a new
-key for every distinct message.
+resending with the same key. It throws `AltinnCorrespondenceException` with `StatusCode` 409. The
+library does not look the existing correspondence up and report it as sent: the key alone does not
+show that it is the same message to the same recipient. Do not resend under a new key until you
+have checked — for example with `Search` filtered on `IdempotencyKey`, then `Get` — that the
+existing correspondence is the one you meant to send. Use a new key for every distinct message.
 
 ```csharp
 try
@@ -300,8 +296,8 @@ endpoint is backed away from rather than hammered.
 
 **Behaviour:**
 - Retries execute transparently without duplicate messages thanks to the API's idempotency keys
-- A retry that gets 409 because its first attempt already reached Altinn returns the existing
-  correspondence's receipt rather than failing — see [Error Handling](#error-handling)
+- A retry whose first attempt already reached Altinn gets 409 for the duplicate idempotency key,
+  which surfaces as `AltinnCorrespondenceException` — see [Error Handling](#error-handling)
 - `HttpClient.Timeout` is set to infinite, so the timeouts above are the only ones that apply and
   a timeout always surfaces as `CorrespondenceServiceException`
 - Responses from retried attempts are disposed, so retrying does not leak connections
@@ -430,13 +426,6 @@ something.
 
 It was an Altinn 2 setting. The Altinn 3 Correspondence API has no forwarding flag and the value
 was never sent, so it has done nothing since the move to Altinn 3. Delete the assignment.
-
-### A duplicate idempotency key returns a success
-
-2.2.0 threw `AltinnCorrespondenceException` with status 409 when Altinn already held a
-correspondence under the idempotency key. 3.0.0 looks that correspondence up and returns its
-receipt as a success; see [Error Handling](#error-handling). A `catch` that used the 409 to detect
-duplicates now only sees the cases where the lookup fails.
 
 ### IDdCorrespondenceService has a new member
 

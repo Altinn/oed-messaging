@@ -16,13 +16,10 @@ public interface IDdCorrespondenceService
     /// </summary>
     /// <param name="correspondence">The correspondence details including recipient, content, and notifications.</param>
     /// <returns>A receipt indicating whether the correspondence was successfully created.</returns>
-    /// <remarks>An API rejection is returned as a failure result rather than thrown. Any unexpected
-    /// status still throws; see the package README.
-    /// A duplicate idempotency key (409) means the correspondence already exists, so it returns the
-    /// receipt of that correspondence as a success. That receipt carries the correspondence's
-    /// current status and no notification orders. The 409 is thrown when the lookup finds nothing or
-    /// fails; when the resilience pipeline rejects the lookup,
-    /// <see cref="Exceptions.CorrespondenceServiceException"/> is thrown instead.</remarks>
+    /// <remarks>An API rejection is returned as a failure result rather than thrown. A duplicate
+    /// idempotency key (409) and any unexpected status still throw; see the package README.
+    /// A 409 means Altinn already holds a correspondence under the key. Check that it is the one
+    /// intended before sending again under a new key.</remarks>
     Task<CorrespondenceResult<ReceiptExternal>> SendCorrespondence(DdCorrespondenceDetails correspondence);
 
     /// <summary>

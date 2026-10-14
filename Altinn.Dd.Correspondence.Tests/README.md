@@ -15,8 +15,9 @@ These hold most of the value: each builds the real handler over a mocked transpo
   cases), notification channel selection, senders-reference defaulting, idempotency key and
   `IgnoreReservation` forwarding, and problem-document translation. Assertions inspect the request
   body the handler actually put on the wire. Also covers the Dialogporten references (`DialogId`,
-  every `TransmissionType` by name, the local guard, Altinn's dialog rejections) and the 409
-  recovery: the lookup by idempotency key, the recovered receipt, and each way the lookup can fail.
+  every `TransmissionType` by name, the local guard, Altinn's dialog rejections), that a 409
+  (duplicate idempotency key) is thrown without looking anything up, and that a transport failure
+  surfaces as `HttpRequestException`.
 - **SearchHandlerTests**: the `Role` and `ResourceId` guard clauses — including that a rejected
   query costs no API call — filter forwarding, and problem-document translation.
 - **GetHandlerTests**: the round trip from a correspondence id to a mapped overview, the requested
@@ -46,8 +47,9 @@ These hold most of the value: each builds the real handler over a mocked transpo
   responses discarded on a retry are disposed, and that a pipeline rejection is translated into
   `CorrespondenceServiceException` with the Polly rejection kept as its inner exception. The
   disposal test is a regression test for the hand-rolled policy this replaced, which leaked a
-  connection per retry. Also covers a retry that runs into its own idempotency key, after a 503 and
-  after an attempt timeout, that `HttpClient.Timeout` is left to the pipeline, and that the
+  connection per retry. Also covers that a retry which runs into its own idempotency key, after a
+  503 or after an attempt timeout, throws the 409, that `HttpClient.Timeout` is left to the
+  pipeline, and that the
   timeouts can be changed through the named pipeline options the package README documents.
 
   The backoff is shortened to milliseconds via `ConfigureAll<HttpStandardResilienceOptions>` so the
@@ -66,9 +68,8 @@ These hold most of the value: each builds the real handler over a mocked transpo
 ### Test support — `TestSupport/`
 
 - **HandlerHarness**: builds a handler over `MockHttpMessageHandler`, records the request the
-  handler sent (body, path, query, count), and hands back the deserialized wire contract. Responses
-  can be scoped to a URL, and `Throws` makes a request fail the way a broken transport or a
-  rejecting pipeline does.
+  handler sent (body, path, query, count), and hands back the deserialized wire contract. `Throws`
+  makes a request fail the way a broken transport or a rejecting pipeline does.
 - **MaskinportenStub**: stubs the Maskinporten metadata, token and Altinn exchange calls, and
   generates a throwaway RSA JWK, so tests that need the whole DI stack run without credentials.
 
