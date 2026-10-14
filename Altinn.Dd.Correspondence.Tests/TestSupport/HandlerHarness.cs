@@ -48,6 +48,23 @@ internal sealed class HandlerHarness : IDisposable
     public HandlerHarness RespondsWithProblem(HttpMethod method, HttpStatusCode status, string detail)
         => Responds(method, status, JsonSerializer.Serialize(new { type = "about:blank", title = "Bad Request", status = (int)status, detail }));
 
+    /// <summary>
+    /// Responds with an RFC 7807 problem document to requests matching <paramref name="url"/>.
+    /// Mocks are matched in registration order, so register a narrower pattern before a wider one.
+    /// </summary>
+    public HandlerHarness RespondsWithProblem(HttpMethod method, string url, HttpStatusCode status, string detail)
+        => Responds(method, status, JsonSerializer.Serialize(new { type = "about:blank", title = "Bad Request", status = (int)status, detail }), url);
+
+    /// <summary>
+    /// Throws <paramref name="exception"/> for requests matching <paramref name="url"/>, the way a
+    /// failing transport or a rejecting resilience pipeline does.
+    /// </summary>
+    public HandlerHarness Throws(HttpMethod method, Exception exception, string url = "*/correspondence/api/v1/correspondence*")
+    {
+        _mockHttp.When(method, url).Throw(exception);
+        return this;
+    }
+
     private HandlerHarness Responds(HttpMethod method, HttpStatusCode status, string json, string url = "*/correspondence/api/v1/correspondence*")
     {
         _mockHttp.When(method, url)
