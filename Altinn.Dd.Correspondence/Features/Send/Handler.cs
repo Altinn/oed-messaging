@@ -60,72 +60,13 @@ internal class Handler(
             var receipt = new ReceiptExternal(result.ToDto(), correspondenceDetails.IdempotencyKey, sendersReference);
             return CorrespondenceResult<ReceiptExternal>.Success(receipt);
         }
+        // A 409 (duplicate idempotency key) is deliberately not caught: the generated client raises
+        // the non-generic AltinnCorrespondenceException for it, and it reaches the caller as in
+        // 2.2.0. Answering it with whatever correspondence holds the key could report a message to
+        // the wrong recipient as delivered.
         catch (AltinnCorrespondenceException<ProblemDetails> e)
         {
             return CorrespondenceResult<ReceiptExternal>.Failure(e.Result.Detail);
-        }
-        catch (AltinnCorrespondenceException e) when (e.StatusCode == (int)System.Net.HttpStatusCode.Conflict)
-        {
-            // 409 means Altinn already holds a correspondence under this idempotency key: either a
-            // retried attempt whose first try reached Altinn but timed out on our side, or a caller
-            // resending. Both are the same send, so answer with the receipt of the one that exists.
-            // If it cannot be found, the conflict surfaces as before.
-            var existing = await FindExisting(correspondenceDetails.IdempotencyKey);
-            if (existing is null)
-            {
-                throw;
-            }
-
-            return CorrespondenceResult<ReceiptExternal>.Success(existing);
-        }
-        catch (Polly.ExecutionRejectedException e)
-        {
-            throw Exceptions.ResilienceFailure.Translate(e);
-        }
-    }
-
-    private async Task<ReceiptExternal?> FindExisting(Guid idempotencyKey)
-    {
-        try
-        {
-            var search = await httpClient.CorrespondenceGETAsync(
-                resourceId: _correspondenceOptions.ResourceId,
-                from: null,
-                to: null,
-                status: null,
-                role: HttpClients.CorrespondencesRoleType.Sender,
-                onBehalfOf: null,
-                sendersReference: null,
-                idempotentKey: idempotencyKey);
-            if (search.Ids is not { Count: > 0 } ids)
-            {
-                return null;
-            }
-
-            var overviews = new List<CorrespondenceOverviewExt>();
-            foreach (var id in ids)
-            {
-                overviews.Add(await httpClient.CorrespondenceGET2Async(id));
-            }
-
-            // The notification orders are not part of the overview, so a recovered receipt has none.
-            var correspondences = overviews
-                .Select(o => new InitializedCorrespondence(o.CorrespondenceId, (CorrespondenceStatus)o.Status, o.Recipient, Notifications: null))
-                .ToList();
-            return new ReceiptExternal(
-                new InitializedCorrespondences(correspondences, []),
-                idempotencyKey,
-                overviews[0].SendersReference);
-        }
-        // When Altinn or the transport fails the lookup, the caller is better served by the original
-        // conflict. A rejection by the resilience pipeline is translated, as on every other call.
-        catch (AltinnCorrespondenceException)
-        {
-            return null;
-        }
-        catch (HttpRequestException)
-        {
-            return null;
         }
         catch (Polly.ExecutionRejectedException e)
         {

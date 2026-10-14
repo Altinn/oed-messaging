@@ -234,46 +234,29 @@ public class ResilienceTests
     }
 
     [Fact]
-    public async Task ARetryThatRunsIntoItsOwnIdempotencyKey_ReturnsTheExistingCorrespondence()
+    public async Task ARetryThatRunsIntoItsOwnIdempotencyKey_ThrowsTheConflict()
     {
         // The first attempt reached Altinn, which created the correspondence, but the answer never
-        // made it back. The retry reuses the idempotency key and gets 409. That is a successful
-        // send, not a failure, and must not push the caller into resending under a new key.
+        // made it back. The retry reuses the idempotency key and gets 409, which reaches the caller
+        // as in 2.2.0. The correspondence exists, so the caller must not resend under a new key.
         using var mockHttp = new MockHttpMessageHandler().StubTokenExchange();
-        var existingId = Guid.NewGuid();
         var endpoint = new Endpoint();
         endpoint.Register(mockHttp, attempt => attempt == 1 ? HttpStatusCode.ServiceUnavailable : HttpStatusCode.Conflict);
-        // Narrower pattern first: mocks are matched in registration order.
-        mockHttp.When(HttpMethod.Get, $"*/correspondence/api/v1/correspondence/{existingId}")
-                .Respond("application/json", JsonSerializer.Serialize(new
-                {
-                    correspondenceId = existingId,
-                    resourceId = "test-resource",
-                    sendersReference = "reference",
-                    recipient = "0192:987654321",
-                    status = "Published",
-                    created = DateTimeOffset.UtcNow,
-                    statusChanged = DateTimeOffset.UtcNow
-                }));
-        mockHttp.When(HttpMethod.Get, "*/correspondence/api/v1/correspondence*")
-                .Respond("application/json", JsonSerializer.Serialize(new { ids = new[] { existingId } }));
 
         using var host = BuildHost(mockHttp);
-        var result = await host.Services.GetRequiredService<IDdCorrespondenceService>()
-            .SendCorrespondence(Details());
+        var exception = await Assert.ThrowsAsync<AltinnCorrespondenceException>(
+            () => host.Services.GetRequiredService<IDdCorrespondenceService>().SendCorrespondence(Details()));
 
-        Assert.True(result.IsSuccess, result.Error);
+        Assert.Equal((int)HttpStatusCode.Conflict, exception.StatusCode);
         Assert.Equal(2, endpoint.Attempts);
-        Assert.Equal(existingId, Assert.Single(result.Value!.InitalizedCorrespondences.Correspondences).CorrespondenceId);
     }
 
     [Fact]
-    public async Task ARetryAfterAnAttemptTimeoutThatRunsIntoItsOwnIdempotencyKey_ReturnsTheExistingCorrespondence()
+    public async Task ARetryAfterAnAttemptTimeoutThatRunsIntoItsOwnIdempotencyKey_ThrowsTheConflict()
     {
-        // The case the 409 recovery exists for: the first attempt reached Altinn, but its answer
-        // came back after the attempt timeout, so the pipeline retried and the retry got 409.
+        // The same, with the first attempt's answer arriving after the attempt timeout - the usual
+        // way a slow Altinn produces this.
         using var mockHttp = new MockHttpMessageHandler().StubTokenExchange();
-        var existingId = Guid.NewGuid();
         var attempts = 0;
         mockHttp.When(HttpMethod.Post, "*/correspondence/api/v1/correspondence")
                 .Respond(async _ =>
@@ -293,28 +276,13 @@ public class ResilienceTests
                             "application/json")
                     };
                 });
-        // Narrower pattern first: mocks are matched in registration order.
-        mockHttp.When(HttpMethod.Get, $"*/correspondence/api/v1/correspondence/{existingId}")
-                .Respond("application/json", JsonSerializer.Serialize(new
-                {
-                    correspondenceId = existingId,
-                    resourceId = "test-resource",
-                    sendersReference = "reference",
-                    recipient = "0192:987654321",
-                    status = "Published",
-                    created = DateTimeOffset.UtcNow,
-                    statusChanged = DateTimeOffset.UtcNow
-                }));
-        mockHttp.When(HttpMethod.Get, "*/correspondence/api/v1/correspondence*")
-                .Respond("application/json", JsonSerializer.Serialize(new { ids = new[] { existingId } }));
 
         using var host = BuildHost(mockHttp, ShortTimeouts);
-        var result = await host.Services.GetRequiredService<IDdCorrespondenceService>()
-            .SendCorrespondence(Details());
+        var exception = await Assert.ThrowsAsync<AltinnCorrespondenceException>(
+            () => host.Services.GetRequiredService<IDdCorrespondenceService>().SendCorrespondence(Details()));
 
-        Assert.True(result.IsSuccess, result.Error);
+        Assert.Equal((int)HttpStatusCode.Conflict, exception.StatusCode);
         Assert.Equal(2, attempts);
-        Assert.Equal(existingId, Assert.Single(result.Value!.InitalizedCorrespondences.Correspondences).CorrespondenceId);
     }
 
     [Fact]

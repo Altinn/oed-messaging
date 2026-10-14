@@ -25,7 +25,6 @@ For callers already on a 3.0.0 pre-release, these entries are new since `3.0.0-b
   `Altinn.Dd.Correspondence.HttpClients` to `Altinn.Dd.Correspondence.Models`, where 2.2.0 had
   them. The generated client is no longer edited by hand.
 - `DdCorrespondenceDetails.AllowForwarding` is removed.
-- A 409 from `SendCorrespondence` returns the existing correspondence's receipt.
 - `HttpClient.Timeout` is infinite.
 - `Search` sends `From` and `To` in UTC.
 
@@ -53,12 +52,6 @@ For callers already on a 3.0.0 pre-release, these entries are new since `3.0.0-b
   result. Before 3.0.0 nothing threw this exception.
 - `DdCorrespondenceDetails.AllowForwarding` is removed. It never had an effect in Altinn 3: the
   Correspondence API has no forwarding flag, so the value was never sent. Delete the assignment.
-- A 409 from `SendCorrespondence` (duplicate idempotency key) now returns a success result with the
-  receipt of the existing correspondence, looked up by the key, instead of throwing. It still throws
-  `AltinnCorrespondenceException` when the lookup finds nothing or fails, and
-  `CorrespondenceServiceException` when the resilience pipeline rejects the lookup. A recovered
-  receipt carries the current status and no notification orders. A `catch` that used the 409 to
-  detect duplicates only sees the failed lookups. See [Error Handling](README.md#error-handling).
 - `IDdCorrespondenceService` has a new member, `GetDialogId`. A class that implements the interface
   itself has to add it.
 - The `Polly`, `Microsoft.Extensions.Http.Polly` and `System.ComponentModel.Annotations`
@@ -88,8 +81,6 @@ For callers already on a 3.0.0 pre-release, these entries are new since `3.0.0-b
 
 ### Fixed
 
-- A retry whose first attempt reached Altinn no longer turns a delivered correspondence into an
-  exception: the retry's 409 is answered with the existing correspondence (see Breaking).
 - `HttpClient.Timeout` is now infinite. Its 100s default matched the pipeline's total timeout and
   fired first, so a slow call surfaced as `TaskCanceledException` instead of
   `CorrespondenceServiceException` (3.0.0-beta and beta.2).

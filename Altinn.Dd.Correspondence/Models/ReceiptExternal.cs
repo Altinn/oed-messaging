@@ -21,12 +21,9 @@ public record InitializedCorrespondences(ICollection<InitializedCorrespondence> 
 /// A correspondence created for one recipient.
 /// </summary>
 /// <param name="CorrespondenceId">The unique id of the correspondence, used to retrieve it later.</param>
-/// <param name="Status">The status the correspondence was created in. In a receipt recovered after a
-/// duplicate idempotency key (409), its current status instead.</param>
+/// <param name="Status">The status the correspondence was created in.</param>
 /// <param name="Recipient">The recipient it was created for, in the format Altinn resolved.</param>
-/// <param name="Notifications">The notifications requested for this recipient, if any. Always
-/// <c>null</c> in a receipt recovered after a duplicate idempotency key (409), since the lookup does
-/// not return notification orders.</param>
+/// <param name="Notifications">The notifications requested for this recipient, if any.</param>
 public record InitializedCorrespondence(Guid CorrespondenceId, CorrespondenceStatus Status, string Recipient, ICollection<InitializedNotification>? Notifications);
 
 /// <summary>
