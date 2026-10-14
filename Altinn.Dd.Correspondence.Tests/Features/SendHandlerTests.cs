@@ -6,6 +6,7 @@ using Polly.Timeout;
 using System.Net;
 
 using CorrespondenceSend = Altinn.Dd.Correspondence.Features.Send;
+using EmailContentType = Altinn.Dd.Correspondence.Models.EmailContentType;
 
 namespace Altinn.Dd.Correspondence.Tests.Features;
 
@@ -36,7 +37,7 @@ public class SendHandlerTests
         Notification = null
     };
 
-    private static async Task<(Result<ReceiptExternal> Result, HandlerHarness Harness)> Send(DdCorrespondenceDetails details)
+    private static async Task<(CorrespondenceResult<ReceiptExternal> Result, HandlerHarness Harness)> Send(DdCorrespondenceDetails details)
     {
         var harness = new HandlerHarness().RespondsWith(HttpMethod.Post, AnAcceptedResponse());
         var sut = new CorrespondenceSend.Handler(harness.Client(), harness.Options());
@@ -215,13 +216,12 @@ public class SendHandlerTests
     }
 
     [Fact]
-    public async Task Send_WhenTheIdempotencyKeyIsAlreadyUsed_Throws()
+    public async Task Send_WhenTheIdempotencyKeyIsAlreadyUsedAndTheLookupIsRejected_ThrowsTheConflict()
     {
-        // The handler only catches AltinnCorrespondenceException<ProblemDetails>, and the generated
-        // client raises the non-generic exception for 409. A duplicate send therefore escapes as an
-        // exception instead of a failure result - documented in the package README.
-        // The handler first looks the existing correspondence up (see the recovery test below); this
-        // is the case where that lookup fails.
+        // The generated client raises the non-generic AltinnCorrespondenceException for 409, so it
+        // never becomes a failure result. The handler first looks the existing correspondence up
+        // (see the recovery tests below); when Altinn rejects that lookup, the 409 is rethrown -
+        // documented in the package README.
         using var harness = new HandlerHarness()
             .RespondsWithProblem(HttpMethod.Post, HttpStatusCode.Conflict, "1034: duplicate idempotent key")
             .RespondsWithProblem(HttpMethod.Get, HttpStatusCode.NotFound, "Not found");
@@ -294,6 +294,8 @@ public class SendHandlerTests
         var exception = await Assert.ThrowsAsync<AltinnCorrespondenceException>(() => sut.Handle(Details()));
 
         Assert.Equal((int)HttpStatusCode.Conflict, exception.StatusCode);
+        // The send and one lookup; the failed lookup is not retried by the handler.
+        Assert.Equal(2, harness.RequestCount);
     }
 
     [Fact]
@@ -309,6 +311,7 @@ public class SendHandlerTests
         var exception = await Assert.ThrowsAsync<CorrespondenceServiceException>(() => sut.Handle(Details()));
 
         Assert.Same(rejection, exception.InnerException);
+        Assert.Equal(2, harness.RequestCount);
     }
 
     [Fact]
@@ -434,5 +437,55 @@ public class SendHandlerTests
         Assert.True(result.IsFailure);
         Assert.Equal(CorrespondenceSend.Handler.TransmissionTypeWithoutDialogId, result.Error);
         Assert.Equal(0, harness.RequestCount);
+    }
+
+    public static TheoryData<TransmissionType> AllTransmissionTypes()
+    {
+        var data = new TheoryData<TransmissionType>();
+        foreach (var transmissionType in Enum.GetValues<TransmissionType>())
+        {
+            data.Add(transmissionType);
+        }
+
+        return data;
+    }
+
+    [Theory]
+    [MemberData(nameof(AllTransmissionTypes))]
+    public async Task TransmissionType_IsSentAsItsExactName(TransmissionType transmissionType)
+    {
+        // Dialogporten's own client numbers these from 0 while Altinn numbers them from 1, so only
+        // the name is unambiguous. Altinn parses the name, so every member must go out as exactly that.
+        var details = Details();
+        details.DialogId = Guid.NewGuid();
+        details.TransmissionType = transmissionType;
+
+        var (result, harness) = await Send(details);
+
+        Assert.True(result.IsSuccess, result.Error);
+        var reference = Assert.Single(
+            harness.SentCorrespondence().Correspondence.ExternalReferences,
+            reference => reference.ReferenceType == ReferenceTypeExt.DialogportenTransmissionType);
+        Assert.Equal(Enum.GetName(transmissionType), reference.ReferenceValue);
+    }
+
+    [Theory]
+    // The rejections Altinn gives a send to an existing dialog after looking the dialog up, with
+    // the texts from Altinn's Errors.cs.
+    [InlineData(HttpStatusCode.BadRequest, "1046: The recipient of the correspondence must be equal to the party of the dialog of the transmission")]
+    [InlineData(HttpStatusCode.BadRequest, "1050: The service owner of a transmission can not differ from the service owner of the dialog")]
+    [InlineData(HttpStatusCode.NotFound, "1054: Dialogporten dialog with the given id was not found")]
+    public async Task DialogId_WhenAltinnRejectsTheDialog_ReturnsFailureCarryingTheProblemDetail(HttpStatusCode status, string detail)
+    {
+        var details = Details();
+        details.DialogId = Guid.NewGuid();
+        using var harness = new HandlerHarness().RespondsWithProblem(HttpMethod.Post, status, detail);
+        var sut = new CorrespondenceSend.Handler(harness.Client(), harness.Options());
+
+        var result = await sut.Handle(details);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(detail, result.Error);
+        Assert.Equal(1, harness.RequestCount);
     }
 }

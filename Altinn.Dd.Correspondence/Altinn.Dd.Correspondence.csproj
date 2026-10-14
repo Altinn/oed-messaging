@@ -11,7 +11,7 @@
     <PackageId>Altinn.Dd.Correspondence</PackageId>
     <!-- Version a local pack produces. The release workflow overrides it from the
          correspondence-v* tag, so this only needs to track what is being prepared.
-         3.0.0 because two public types changed incompatibly - see the README. -->
+         3.0.0 because the public API changed incompatibly - see the README. -->
     <Version>3.0.0</Version>
     <Authors>Digitaliseringsdirektoratet</Authors>
     <Company>Digitaliseringsdirektoratet</Company>

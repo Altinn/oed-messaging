@@ -1,15 +1,17 @@
-namespace Altinn.Dd.Correspondence.Tests;
+using Altinn.Dd.Correspondence.Models;
+
+namespace Altinn.Dd.Correspondence.Tests.Models;
 
 /// <summary>
-/// Covers Result&lt;T&gt; itself. It replaced three near-identical result types, and its Match
+/// Covers CorrespondenceResult&lt;T&gt; itself. It replaced three near-identical result types, and its Match
 /// overload is public API that no other test exercises.
 /// </summary>
-public class ResultTests
+public class CorrespondenceResultTests
 {
     [Fact]
     public void Success_CarriesTheValueAndNoError()
     {
-        var result = Result<string>.Success("value");
+        var result = CorrespondenceResult<string>.Success("value");
 
         Assert.True(result.IsSuccess);
         Assert.False(result.IsFailure);
@@ -20,7 +22,7 @@ public class ResultTests
     [Fact]
     public void Failure_CarriesTheErrorAndNoValue()
     {
-        var result = Result<string>.Failure("went wrong");
+        var result = CorrespondenceResult<string>.Failure("went wrong");
 
         Assert.False(result.IsSuccess);
         Assert.True(result.IsFailure);
@@ -33,7 +35,7 @@ public class ResultTests
     {
         var failureRan = false;
 
-        var matched = Result<int>.Success(41).Match(
+        var matched = CorrespondenceResult<int>.Success(41).Match(
             onSuccess: value => value + 1,
             onFailure: _ => { failureRan = true; return -1; });
 
@@ -46,7 +48,7 @@ public class ResultTests
     {
         var successRan = false;
 
-        var matched = Result<int>.Failure("nope").Match(
+        var matched = CorrespondenceResult<int>.Failure("nope").Match(
             onSuccess: _ => { successRan = true; return "unreachable"; },
             onFailure: error => error.ToUpperInvariant());
 
@@ -58,7 +60,7 @@ public class ResultTests
     public void Match_OnFailure_DoesNotDereferenceTheMissingValue()
     {
         // Value is null on a failure, so Match must not pass it to the success branch.
-        var result = Result<string>.Failure("nope");
+        var result = CorrespondenceResult<string>.Failure("nope");
 
         var matched = result.Match(
             onSuccess: value => value.Length.ToString(),

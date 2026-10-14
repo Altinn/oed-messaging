@@ -116,11 +116,12 @@ public class MyService
 
 ## API Reference
 
-`IDdCorrespondenceService` exposes three operations. Each returns a `Result<T>` rather than
-throwing on an API rejection — see [Error Handling](#error-handling). Inspect `IsSuccess` /
+`IDdCorrespondenceService` exposes four operations. Each returns a `CorrespondenceResult<T>`
+(namespace `Altinn.Dd.Correspondence.Models`) rather than throwing on an API rejection — see
+[Error Handling](#error-handling). Inspect `IsSuccess` /
 `IsFailure` and read `Value` or `Error`, or use `Match` to handle both branches in one expression.
 
-### `SendCorrespondence(DdCorrespondenceDetails)` → `Result<ReceiptExternal>`
+### `SendCorrespondence(DdCorrespondenceDetails)` → `CorrespondenceResult<ReceiptExternal>`
 
 Creates a correspondence. Notable fields on `DdCorrespondenceDetails`:
 
@@ -133,7 +134,7 @@ Creates a correspondence. Notable fields on `DdCorrespondenceDetails`:
 | `ShipmentDatetime` | When notifications are sent. Defaults to now. |
 | `Notification` | Optional. See below. |
 | `IgnoreReservation` | Overrides a recipient's KRR reservation against digital communication. |
-| `IdempotencyKey` | Generated automatically if not supplied. |
+| `IdempotencyKey` | Generated automatically if not supplied. A generated key only protects the retries within one call; to make a resend after a crash or a queue redelivery safe, persist the key with the work item and set it. |
 | `SendersReference` | Defaults to `EXT_DD_SHIP_{IdempotencyKey}` if not supplied. |
 | `DialogId` | Optional. The id of an existing Dialogporten dialog; the correspondence is added to it as a transmission instead of creating a new dialog. See [Sending to an existing dialog](#sending-to-an-existing-dialog). |
 | `TransmissionType` | Optional, and only valid together with `DialogId` — setting it alone fails locally without calling the API. Defaults to `Information` on Altinn's side. |
@@ -147,10 +148,10 @@ The notification channel is derived from which `NotificationDetails` fields you 
 | Both of the above | `EmailAndSms` |
 | Neither (or `Notification` is null) | No notification is requested |
 
-On success, `Result.Value` carries the initialized correspondences, the idempotency key and the
-senders reference.
+On success, `Value` carries the initialized correspondences, the idempotency key and the senders
+reference.
 
-### `Search(Query)` → `Result<IEnumerable<Guid>>`
+### `Search(Query)` → `CorrespondenceResult<IEnumerable<Guid>>`
 
 Returns the ids of matching correspondences. `ResourceId` and `Role` are **required** — a query
 missing either fails locally without calling the API. `From`, `To`, `Status`, `OnBehalfOf`,
@@ -158,26 +159,29 @@ missing either fails locally without calling the API. `From`, `To`, `Status`, `O
 `From` and `To` are sent to Altinn in UTC, so a `DateTimeOffset` in any offset selects the window
 it names.
 
-`Role` is of type `Altinn.Dd.Correspondence.HttpClients.CorrespondencesRoleType`:
+`Role` is of type `Altinn.Dd.Correspondence.Models.CorrespondencesRoleType`:
 
 ```csharp
 using Altinn.Dd.Correspondence.Features.Search;
-using Altinn.Dd.Correspondence.HttpClients;
+using Altinn.Dd.Correspondence.Models;
 
 var query = new Query(ResourceId: "oed-correspondence", Role: CorrespondencesRoleType.Sender);
 ```
 
-### `Get(Request)` → `Result<CorrespondenceOverview>`
+### `Get(Request)` → `CorrespondenceResult<CorrespondenceOverview>`
 
 Returns a `CorrespondenceOverview` for a single correspondence id, including content, attachments,
 notification settings and current status.
 
-### `GetDialogId(Request)` → `Result<Guid?>`
+### `GetDialogId(Request)` → `CorrespondenceResult<Guid?>`
 
 Returns the id of the Dialogporten dialog a correspondence belongs to — the same value as
-`CorrespondenceOverview.DialogId`. It is `null` until Altinn has created the dialog, which happens
-in the background after the correspondence is published, so a lookup straight after sending
-usually returns `null`. Retry until it returns an id.
+`CorrespondenceOverview.DialogId`. It is `null` until Altinn has created the dialog. Altinn does
+that in a background job after accepting the send (after the notification order, if there is one)
+and publishes the correspondence only once the dialog exists, so a lookup straight after sending
+usually returns `null`. Retry until it returns an id, with a deadline: if the dialog cannot be
+created, Altinn fails the correspondence and the id stays `null`. `Get` shows that as status
+`Failed`.
 
 ### Sending to an existing dialog
 
@@ -186,7 +190,18 @@ keep several correspondences in one dialog, send the first one normally, read it
 `GetDialogId`, and set `DialogId` on the ones that follow:
 
 ```csharp
-var dialogId = (await messagingService.GetDialogId(new Request(firstCorrespondenceId))).Value;
+var dialogResult = await messagingService.GetDialogId(new Request(firstCorrespondenceId));
+if (dialogResult.IsFailure)
+{
+    // The lookup was rejected; dialogResult.Error says why.
+    return;
+}
+
+if (dialogResult.Value is not { } dialogId)
+{
+    // No dialog yet. Sending now without a DialogId would create a second dialog, so retry later.
+    return;
+}
 
 var followUp = new DdCorrespondenceDetails
 {
@@ -197,6 +212,9 @@ var followUp = new DdCorrespondenceDetails
     TransmissionType = TransmissionType.Information
 };
 ```
+
+Check for `null` before sending: a correspondence without a `DialogId` is not an error, it just
+creates a new dialog.
 
 Altinn checks that the dialog exists, that it belongs to the same recipient, and that its resource
 has the same service owner as the new correspondence's resource; a mismatch is returned as a
@@ -214,22 +232,28 @@ exception — but only for the statuses the generated client documents for that 
 
 | Operation | Becomes a failure result | Throws `AltinnCorrespondenceException` |
 | --- | --- | --- |
-| `SendCorrespondence` | 400, 401, 404, 422 | 409 (duplicate idempotency key) only when the existing correspondence cannot be found, anything else |
+| `SendCorrespondence` | 400, 401, 404, 422 | 409 (duplicate idempotency key) only when the existing correspondence cannot be looked up, anything else |
 | `Search` | 400, 401 | anything else, including 404 |
 | `Get` | 400, 401, 404 | anything else |
 
 Anything not in the middle column — including a 5xx that outlives the retry policy, and a
 transport failure — surfaces as an exception, so keep a try/catch around the call as well as
 checking the result. Rejections from the resilience pipeline arrive as
-`CorrespondenceServiceException`; everything else from the API arrives as
+`CorrespondenceServiceException`, a transport failure that outlives the retries arrives as
+`HttpRequestException`, and every other status from the API arrives as
 `AltinnCorrespondenceException`.
 
 A 409 from `SendCorrespondence` means Altinn already holds a correspondence under that idempotency
 key — usually a retry whose first attempt reached Altinn but timed out on the way back, or a caller
 resending. Either way the send has happened, so the library looks the correspondence up by the
-key and returns a success result with its receipt: its id, status, recipient and senders reference,
-but no notification orders, since those are not part of the lookup. Only if the lookup fails or
-finds nothing does the 409 throw `AltinnCorrespondenceException` as before.
+key and returns a success result with its receipt: its id, current status, recipient and senders
+reference, but no notification orders, since those are not part of the lookup. If the lookup finds
+nothing, or Altinn or the transport fails it, the 409 throws `AltinnCorrespondenceException` as
+before; if the resilience pipeline rejects the lookup, `CorrespondenceServiceException` is thrown.
+
+The lookup goes by the key alone and does not compare content: a key reused for a different
+message returns the earlier correspondence's receipt, and the new message is not sent. Use a new
+key for every distinct message.
 
 ```csharp
 try
@@ -290,13 +314,31 @@ endpoint is backed away from rather than hammered.
 - Four attempts at 30s exceed the 100s total, so against a persistently slow endpoint the total
   timeout ends the call before the retry budget is spent
 
+**Changing the defaults:** the pipeline reads its settings from the `HttpStandardResilienceOptions`
+named `AltinnCorrespondenceClient-standard`. Configure those after `AddDdCorrespondenceService`, so
+your values are applied after the library's:
+
+```csharp
+services.AddDdCorrespondenceService("DdConfig");
+services.Configure<HttpStandardResilienceOptions>("AltinnCorrespondenceClient-standard", options =>
+{
+    options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(60);
+    options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(180);
+    // The pipeline requires the sampling duration to be at least twice the attempt timeout.
+    options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(120);
+});
+```
+
 ## Example Implementation
 
 ### SendDdCorrespondence Project
 
 This repository includes a working example project called `SendDdCorrespondence` that demonstrates:
 
-- Full correspondence sending workflow, followed by a search and a get
+- Full correspondence sending workflow, followed by a search and a get (`dotnet run`)
+- Sending to an existing dialog (`dotnet run -- dialog`): sends one correspondence, polls
+  `GetDialogId` every 5 seconds for up to 3 minutes until Altinn has created the dialog, then adds
+  one transmission of every `TransmissionType` to it
 
 **Key features of the example:**
 - Includes proper error handling and logging
@@ -316,46 +358,50 @@ This section has migration examples for the breaking changes. The
 [changelog](https://github.com/Altinn/oed-messaging/blob/main/Altinn.Dd.Correspondence/CHANGELOG.md)
 lists every change in the release.
 
-### Two enums moved namespace
+### The Get overview uses Models.EmailContentType
 
-`CorrespondencesRoleType` and `EmailContentType` moved from `Altinn.Dd.Correspondence.Models` (and,
-for `EmailContentType`, also `Features.Get`) to `Altinn.Dd.Correspondence.HttpClients`. The library
-used to keep its own copies and cast between them; there is now one of each. Members and values are
-unchanged, so only the `using` moves:
+`Features.Get.EmailContentType` is removed. `EmailContentType` and `ReminderEmailContentType` on
+`InitializeCorrespondenceNotification` (the `Notification` of a `CorrespondenceOverview`) now use
+`Altinn.Dd.Correspondence.Models.EmailContentType`, the type `NotificationDetails` already used.
+Members and values are unchanged, so only code that names the type changes:
 
 ```csharp
--using Altinn.Dd.Correspondence.Models;
-+using Altinn.Dd.Correspondence.HttpClients;
-
- var query = new Query(ResourceId: "oed-correspondence", Role: CorrespondencesRoleType.Sender);
- var notification = new NotificationDetails { EmailContentType = EmailContentType.Html };
+-if (overview.Notification?.EmailContentType == Altinn.Dd.Correspondence.Features.Get.EmailContentType.Html)
++if (overview.Notification?.EmailContentType == Altinn.Dd.Correspondence.Models.EmailContentType.Html)
 ```
 
-`NotificationDetails.EmailContentType` and the `EmailContentType` members of the Get overview now
-use that single type.
+`CorrespondencesRoleType` and `EmailContentType` stay in `Altinn.Dd.Correspondence.Models`, as in
+2.2.0.
 
 ### One result type replaces three
 
 `Models.CorrespondenceResult`, `Features.Get.Result` and `Features.Search.Result` were the same
 type three times over, differing only in the value they carried. They are replaced by
-`Altinn.Dd.Correspondence.Result<T>`:
+`Altinn.Dd.Correspondence.Models.CorrespondenceResult<T>`, in the namespace the send result already
+lived in:
 
 ```csharp
 -Task<CorrespondenceResult>     SendCorrespondence(DdCorrespondenceDetails correspondence);
 -Task<Features.Search.Result>   Search(Query query);
 -Task<Features.Get.Result>      Get(Features.Get.Request request);
-+Task<Result<ReceiptExternal>>       SendCorrespondence(DdCorrespondenceDetails correspondence);
-+Task<Result<IEnumerable<Guid>>>     Search(Query query);
-+Task<Result<CorrespondenceOverview>> Get(Request request);
++Task<CorrespondenceResult<ReceiptExternal>>        SendCorrespondence(DdCorrespondenceDetails correspondence);
++Task<CorrespondenceResult<IEnumerable<Guid>>>      Search(Query query);
++Task<CorrespondenceResult<CorrespondenceOverview>> Get(Request request);
 ```
 
 `IsSuccess`, `IsFailure`, `Error`, `Success`, `Failure` and `Match` are unchanged. The one rename
-is on the send path: `CorrespondenceResult.Receipt` is now `Result.Value`, matching the other two.
+is on the send path: `CorrespondenceResult.Receipt` is now `Value`, matching the other two.
 
 ```csharp
 -if (result.IsSuccess) Console.WriteLine(result.Receipt!.IdempotencyKey);
 +if (result.IsSuccess) Console.WriteLine(result.Value!.IdempotencyKey);
 ```
+
+The old Search and Get results were records; `CorrespondenceResult<T>` is a sealed class, so value
+equality, `with` expressions and the record `ToString` are gone. The constructor of
+`DdCorrespondenceService` and the `IHandler<,>` registrations change their type arguments to match,
+which only matters if you construct the service yourself instead of using
+`AddDdCorrespondenceService`.
 
 ### The resilience pipeline can fail calls that used to succeed
 
@@ -380,8 +426,33 @@ resilience pipeline rejects a request, so callers do not have to reference Polly
 or an open circuit. Any pre-3.0.0 `catch` block for it was dead code and will now actually catch
 something.
 
-Everything else is additive: the package now ships XML documentation, so the public surface shows
-up in IntelliSense.
+### DdCorrespondenceDetails.AllowForwarding is removed
+
+It was an Altinn 2 setting. The Altinn 3 Correspondence API has no forwarding flag and the value
+was never sent, so it has done nothing since the move to Altinn 3. Delete the assignment.
+
+### A duplicate idempotency key returns a success
+
+2.2.0 threw `AltinnCorrespondenceException` with status 409 when Altinn already held a
+correspondence under the idempotency key. 3.0.0 looks that correspondence up and returns its
+receipt as a success; see [Error Handling](#error-handling). A `catch` that used the 409 to detect
+duplicates now only sees the cases where the lookup fails.
+
+### IDdCorrespondenceService has a new member
+
+`GetDialogId` is added to the interface. A class that implements `IDdCorrespondenceService` itself,
+such as a decorator or a hand-written fake, has to add it. Mocks generated by a mocking library are
+not affected.
+
+### Polly is no longer a dependency
+
+The package no longer references `Polly`, `Microsoft.Extensions.Http.Polly` or
+`System.ComponentModel.Annotations`. Code that used them through this package has to reference them
+directly.
+
+Everything else is additive: Dialogporten dialog support (`DialogId`, `TransmissionType` and
+`GetDialogId`), the XML documentation that makes the public surface show up in IntelliSense, and the
+fixes listed in the changelog.
 
 ## Migration from Altinn.Oed.Messaging
 
@@ -499,8 +570,9 @@ The workflow will automatically:
 `altinn_correspondence.nswag`, which embeds the Altinn Correspondence OpenAPI document. Nothing in
 the build regenerates it — it is a manual step.
 
-NSwag is pinned to the version the client was generated with (14.6.3) in the repository's
-`dotnet-tools.json`. From the `Altinn.Dd.Correspondence` folder:
+NSwag is pinned in the repository's `dotnet-tools.json`. Renovate keeps that pin current, so it can
+be newer than the version recorded in the client's header. From the `Altinn.Dd.Correspondence`
+folder:
 
 ```bash
 dotnet tool restore
@@ -509,7 +581,8 @@ dotnet nswag run altinn_correspondence.nswag
 
 This writes `HttpClients/AltinnCorrespondenceClient.cs` from the embedded document, not from the
 URL in the config, so it is reproducible: run against an unchanged document, the only differences
-are whitespace and the hand-edited enums described below. To pick up API changes, replace the
+are whitespace and, when the pinned NSwag is newer, the version stamps. To pick up API changes,
+replace the
 embedded document first, and review the regenerated client on its own rather than alongside a
 feature change.
 
@@ -518,20 +591,11 @@ comes from `DdCorrespondenceOptions.Environment`, which sets `HttpClient.BaseAdd
 `HostBuilderExtensions`. A generated `BaseUrl` would default to tt02 and take precedence over it.
 
 The config sets `typeAccessModifier: internal`, so the generated contract stays out of this
-package's public surface; the `Models` and `Features` types are the public face. There is one
-exception: `CorrespondencesRoleType` is hand-edited to `public`, because `Features.Search.Query`
-exposes it directly rather than the library keeping a duplicate copy of the enum. NSwag's access
-modifier is all-or-nothing, so **a regeneration resets that enum to `internal`** and the build
-fails with `CS0051` on `Features/Search/Query.cs`. Re-apply `public` to it; the generated file
-carries a `HAND-EDITED` comment at that spot.
+package's public surface; the `Models` and `Features` types are the public face, and the library
+converts between them and the generated types. The generated file is not edited by hand.
 
-`EmailContentType` is hand-edited to `public` the same way, because `NotificationDetails` and the
-`Get` overview expose it. A regeneration resets it too and the build fails with `CS0053`; it also
-carries a `HAND-EDITED` comment.
-
-`EnumParityTests` guards the remaining public enums that are copies of generated ones — run the
-tests after regenerating, since an unchecked enum cast cannot report a renumbered member on its
-own.
+`EnumParityTests` guards every public enum that is a copy of a generated one — run the tests after
+regenerating, since an unchecked enum cast cannot report a renumbered member on its own.
 
 ## License
 

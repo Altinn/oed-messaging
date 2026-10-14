@@ -1,6 +1,21 @@
 namespace Altinn.Dd.Correspondence.Models;
 
 /// <summary>
+/// The side of a correspondence to search from.
+/// </summary>
+public enum CorrespondencesRoleType
+{
+    /// <summary>Correspondences received by the party.</summary>
+    Recipient = 0,
+
+    /// <summary>Correspondences sent by the party.</summary>
+    Sender = 1,
+
+    /// <summary>Correspondences the party either sent or received.</summary>
+    RecipientAndSender = 2,
+}
+
+/// <summary>
 /// The outcome of requesting a notification for a correspondence.
 /// </summary>
 public enum InitializedNotificationStatus

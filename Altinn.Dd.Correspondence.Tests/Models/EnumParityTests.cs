@@ -37,6 +37,14 @@ public class EnumParityTests
         AssertSameShape<CorrespondenceModels.CorrespondenceStatus, CorrespondenceStatusExt>();
 
     [Fact]
+    public void CorrespondencesRoleType_MatchesTheGeneratedEnum() =>
+        AssertSameShape<CorrespondenceModels.CorrespondencesRoleType, CorrespondencesRoleType>();
+
+    [Fact]
+    public void EmailContentType_MatchesTheGeneratedEnum() =>
+        AssertSameShape<CorrespondenceModels.EmailContentType, EmailContentType>();
+
+    [Fact]
     public void InitializedNotificationStatus_MatchesTheGeneratedEnum() =>
         AssertSameShape<CorrespondenceModels.InitializedNotificationStatus, InitializedNotificationStatusExt>();
 

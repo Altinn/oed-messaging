@@ -15,21 +15,35 @@ what a caller has to change; longer migration notes belong in the README, linked
 
 See [Breaking changes in 3.0.0](README.md#breaking-changes-in-300) for migration examples.
 
+### Since 3.0.0-beta.2
+
+For callers already on a 3.0.0 pre-release, these entries are new since `3.0.0-beta.2`:
+
+- `Result<T>` is renamed `CorrespondenceResult<T>` and moves from `Altinn.Dd.Correspondence` to
+  `Altinn.Dd.Correspondence.Models`, so it cannot clash with a `Result<T>` from another library.
+- `CorrespondencesRoleType` and `EmailContentType` move back from
+  `Altinn.Dd.Correspondence.HttpClients` to `Altinn.Dd.Correspondence.Models`, where 2.2.0 had
+  them. The generated client is no longer edited by hand.
+- `DdCorrespondenceDetails.AllowForwarding` is removed.
+- A 409 from `SendCorrespondence` returns the existing correspondence's receipt.
+- `HttpClient.Timeout` is infinite.
+- `Search` sends `From` and `To` in UTC.
+
 ### Breaking
 
 - `SendCorrespondence`, `Search` and `Get` now return a single generic
-  `Altinn.Dd.Correspondence.Result<T>`, replacing `Models.CorrespondenceResult`,
+  `Altinn.Dd.Correspondence.Models.CorrespondenceResult<T>`, replacing `Models.CorrespondenceResult`,
   `Features.Search.Result` and `Features.Get.Result`:
-  - `SendCorrespondence` returns `Result<ReceiptExternal>`
-  - `Search` returns `Result<IEnumerable<Guid>>`
-  - `Get` returns `Result<CorrespondenceOverview>`
+  - `SendCorrespondence` returns `CorrespondenceResult<ReceiptExternal>`
+  - `Search` returns `CorrespondenceResult<IEnumerable<Guid>>`
+  - `Get` returns `CorrespondenceResult<CorrespondenceOverview>`
 
   `IsSuccess`, `IsFailure`, `Error`, `Success`, `Failure` and `Match` are unchanged.
-  `CorrespondenceResult.Receipt` is now `Result<T>.Value`.
-- `CorrespondencesRoleType` and `EmailContentType` moved to the `Altinn.Dd.Correspondence.HttpClients`
-  namespace. The duplicate copies in `Models` and `Features.Get` are removed. Members and values are
-  unchanged, so only the `using` changes. `NotificationDetails.EmailContentType` and the
-  `EmailContentType` members of `InitializeCorrespondenceNotification` now use this type.
+  `CorrespondenceResult.Receipt` is now `CorrespondenceResult<T>.Value`. The old Search and Get
+  results were records; the new type is a sealed class, so value equality and `with` are gone.
+- `Features.Get.EmailContentType` is removed. `EmailContentType` and `ReminderEmailContentType` on
+  `InitializeCorrespondenceNotification` now use `Models.EmailContentType`, the type
+  `NotificationDetails` already used. Members and values are unchanged.
 - The HTTP client now uses the standard resilience pipeline from
   `Microsoft.Extensions.Http.Resilience`, which adds limits 2.2.0 did not have: a 30s timeout per
   attempt, a 100s total timeout, a circuit breaker and a limit of 1000 concurrent requests. A single
@@ -39,18 +53,28 @@ See [Breaking changes in 3.0.0](README.md#breaking-changes-in-300) for migration
   result. Before 3.0.0 nothing threw this exception.
 - `DdCorrespondenceDetails.AllowForwarding` is removed. It never had an effect in Altinn 3: the
   Correspondence API has no forwarding flag, so the value was never sent. Delete the assignment.
+- A 409 from `SendCorrespondence` (duplicate idempotency key) now returns a success result with the
+  receipt of the existing correspondence, looked up by the key, instead of throwing. It still throws
+  `AltinnCorrespondenceException` when the lookup finds nothing or fails, and
+  `CorrespondenceServiceException` when the resilience pipeline rejects the lookup. A recovered
+  receipt carries the current status and no notification orders. A `catch` that used the 409 to
+  detect duplicates only sees the failed lookups. See [Error Handling](README.md#error-handling).
+- `IDdCorrespondenceService` has a new member, `GetDialogId`. A class that implements the interface
+  itself has to add it.
+- The `Polly`, `Microsoft.Extensions.Http.Polly` and `System.ComponentModel.Annotations`
+  dependencies are removed (see Removed). Code that used them through this package has to reference
+  them directly.
 
 ### Added
 
 - XML documentation for the whole public API.
 - README sections on error handling (which HTTP statuses return a failure result and which throw)
-  and on the resilience defaults.
+  and on the resilience defaults, including how to change them.
 - Sending to an existing Dialogporten dialog: `DdCorrespondenceDetails.DialogId` and
   `DdCorrespondenceDetails.TransmissionType`, with the new `Models.TransmissionType` enum. See
   [Sending to an existing dialog](README.md#sending-to-an-existing-dialog).
 - `IDdCorrespondenceService.GetDialogId` and `CorrespondenceOverview.DialogId`, to read the dialog a
-  correspondence belongs to. A custom implementation of `IDdCorrespondenceService` has to add
-  `GetDialogId`.
+  correspondence belongs to.
 - `ReferenceType.DialogportenTransmissionType`. Reading a correspondence that carries this
   reference type used to fail to deserialize.
 
@@ -61,15 +85,11 @@ See [Breaking changes in 3.0.0](README.md#breaking-changes-in-300) for migration
   leaking their connection.
 - `Microsoft.Extensions.DependencyInjection` and `Microsoft.Extensions.Http` are pinned to 10.0.12
   instead of the `10.0.*` wildcard.
-- A 409 from `SendCorrespondence` (duplicate idempotency key) now returns a success result with the
-  receipt of the existing correspondence, looked up by the key, instead of throwing. It still throws
-  `AltinnCorrespondenceException` when the lookup finds nothing. A recovered receipt carries no
-  notification orders. See [Error Handling](README.md#error-handling).
 
 ### Fixed
 
 - A retry whose first attempt reached Altinn no longer turns a delivered correspondence into an
-  exception: the retry's 409 is answered with the existing correspondence (see Changed).
+  exception: the retry's 409 is answered with the existing correspondence (see Breaking).
 - `HttpClient.Timeout` is now infinite. Its 100s default matched the pipeline's total timeout and
   fired first, so a slow call surfaced as `TaskCanceledException` instead of
   `CorrespondenceServiceException` (3.0.0-beta and beta.2).

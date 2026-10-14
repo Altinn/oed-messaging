@@ -16,7 +16,8 @@ internal static class ResilienceFailure
     {
         TimeoutRejectedException => new CorrespondenceServiceException(
             "The correspondence request timed out before Altinn responded. The attempt and total " +
-            "timeouts are configurable on the resilience options.", rejection),
+            "timeouts can be changed through the HttpStandardResilienceOptions named " +
+            "\"AltinnCorrespondenceClient-standard\"; see Resilience in the package README.", rejection),
 
         BrokenCircuitException => new CorrespondenceServiceException(
             "The correspondence request was not attempted because too many recent calls to Altinn " +

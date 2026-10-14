@@ -11,6 +11,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Http.Resilience;
 using Polly;
+using Polly.Timeout;
 using RichardSzalay.MockHttp;
 using System.Net;
 using System.Text;
@@ -73,7 +74,8 @@ public class ResilienceTests
 
     private static IHost BuildHost(
         MockHttpMessageHandler mockHttp,
-        Action<HttpStandardResilienceOptions>? tighten = null) =>
+        Action<HttpStandardResilienceOptions>? tighten = null,
+        Action<IServiceCollection>? configureAfter = null) =>
         Host.CreateDefaultBuilder()
             .ConfigureServices(services =>
             {
@@ -100,6 +102,8 @@ public class ResilienceTests
 
                 services.ConfigureAll<HttpClientFactoryOptions>(options =>
                     options.HttpMessageHandlerBuilderActions.Add(builder => builder.PrimaryHandler = mockHttp));
+
+                configureAfter?.Invoke(services);
             })
             .Build();
 
@@ -261,6 +265,81 @@ public class ResilienceTests
         Assert.True(result.IsSuccess, result.Error);
         Assert.Equal(2, endpoint.Attempts);
         Assert.Equal(existingId, Assert.Single(result.Value!.InitalizedCorrespondences.Correspondences).CorrespondenceId);
+    }
+
+    [Fact]
+    public async Task ARetryAfterAnAttemptTimeoutThatRunsIntoItsOwnIdempotencyKey_ReturnsTheExistingCorrespondence()
+    {
+        // The case the 409 recovery exists for: the first attempt reached Altinn, but its answer
+        // came back after the attempt timeout, so the pipeline retried and the retry got 409.
+        using var mockHttp = new MockHttpMessageHandler().StubTokenExchange();
+        var existingId = Guid.NewGuid();
+        var attempts = 0;
+        mockHttp.When(HttpMethod.Post, "*/correspondence/api/v1/correspondence")
+                .Respond(async _ =>
+                {
+                    attempts++;
+                    if (attempts == 1)
+                    {
+                        await Task.Delay(800);
+                        return new HttpResponseMessage(HttpStatusCode.OK);
+                    }
+
+                    return new HttpResponseMessage(HttpStatusCode.Conflict)
+                    {
+                        Content = new StringContent(
+                            JsonSerializer.Serialize(new { type = "about:blank", status = 409, detail = "1034: duplicate idempotent key" }),
+                            Encoding.UTF8,
+                            "application/json")
+                    };
+                });
+        // Narrower pattern first: mocks are matched in registration order.
+        mockHttp.When(HttpMethod.Get, $"*/correspondence/api/v1/correspondence/{existingId}")
+                .Respond("application/json", JsonSerializer.Serialize(new
+                {
+                    correspondenceId = existingId,
+                    resourceId = "test-resource",
+                    sendersReference = "reference",
+                    recipient = "0192:987654321",
+                    status = "Published",
+                    created = DateTimeOffset.UtcNow,
+                    statusChanged = DateTimeOffset.UtcNow
+                }));
+        mockHttp.When(HttpMethod.Get, "*/correspondence/api/v1/correspondence*")
+                .Respond("application/json", JsonSerializer.Serialize(new { ids = new[] { existingId } }));
+
+        using var host = BuildHost(mockHttp, ShortTimeouts);
+        var result = await host.Services.GetRequiredService<IDdCorrespondenceService>()
+            .SendCorrespondence(Details());
+
+        Assert.True(result.IsSuccess, result.Error);
+        Assert.Equal(2, attempts);
+        Assert.Equal(existingId, Assert.Single(result.Value!.InitalizedCorrespondences.Correspondences).CorrespondenceId);
+    }
+
+    [Fact]
+    public async Task TheTimeouts_CanBeChangedThroughTheNamedPipelineOptions()
+    {
+        // The README tells callers to change the timeouts by configuring the options named
+        // "AltinnCorrespondenceClient-standard" after AddDdCorrespondenceService. If the client or
+        // pipeline name changed, the 30s default would apply, the slow call would succeed, and this
+        // test would fail.
+        using var mockHttp = new MockHttpMessageHandler().StubTokenExchange();
+        mockHttp.When(HttpMethod.Post, "*/correspondence/api/v1/correspondence")
+                .Respond(async _ =>
+                {
+                    await Task.Delay(800);
+                    return new HttpResponseMessage(HttpStatusCode.OK);
+                });
+
+        using var host = BuildHost(mockHttp, configureAfter: services =>
+            services.Configure<HttpStandardResilienceOptions>("AltinnCorrespondenceClient-standard", ShortTimeouts));
+        var service = host.Services.GetRequiredService<IDdCorrespondenceService>();
+
+        var exception = await Assert.ThrowsAsync<CorrespondenceServiceException>(
+            () => service.SendCorrespondence(Details()));
+
+        Assert.IsType<TimeoutRejectedException>(exception.InnerException);
     }
 
     [Fact]

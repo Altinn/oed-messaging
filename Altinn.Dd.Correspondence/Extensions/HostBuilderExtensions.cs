@@ -79,9 +79,9 @@ public static class ServiceCollectionExtensions
         correspondenceOptions.MaskinportenSettings.Scope = CorrespondenceScope;
         correspondenceOptions.MaskinportenSettings.ExhangeToAltinnToken = true;
 
-        services.AddTransient<IHandler<DdCorrespondenceDetails, Result<ReceiptExternal>>, Features.Send.Handler>();
-        services.AddTransient<IHandler<Query, Result<IEnumerable<Guid>>>, Features.Search.Handler>();
-        services.AddTransient<IHandler<Request, Result<CorrespondenceOverview>>, Features.Get.Handler>();
+        services.AddTransient<IHandler<DdCorrespondenceDetails, CorrespondenceResult<ReceiptExternal>>, Features.Send.Handler>();
+        services.AddTransient<IHandler<Query, CorrespondenceResult<IEnumerable<Guid>>>, Features.Search.Handler>();
+        services.AddTransient<IHandler<Request, CorrespondenceResult<CorrespondenceOverview>>, Features.Get.Handler>();
         services.AddTransient<IDdCorrespondenceService, DdCorrespondenceService>();
 
         ConfigureMaskinportenHttpClient(services, correspondenceOptions);

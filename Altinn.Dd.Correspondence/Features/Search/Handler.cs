@@ -1,9 +1,10 @@
 
 using Altinn.Dd.Correspondence.HttpClients;
+using Altinn.Dd.Correspondence.Models;
 
 namespace Altinn.Dd.Correspondence.Features.Search;
 
-internal class Handler : IHandler<Query, Result<IEnumerable<Guid>>>
+internal class Handler : IHandler<Query, CorrespondenceResult<IEnumerable<Guid>>>
 {
     private readonly AltinnCorrespondenceClient _httpClient;
 
@@ -13,19 +14,19 @@ internal class Handler : IHandler<Query, Result<IEnumerable<Guid>>>
         _httpClient = httpClient;
     }
 
-    public async Task<Result<IEnumerable<Guid>>> Handle(Query query)
+    public async Task<CorrespondenceResult<IEnumerable<Guid>>> Handle(Query query)
     {
         try
         {
             // Role field er obligatorisk, sjekk den
             if (query.Role == null)
             {
-                return Result<IEnumerable<Guid>>.Failure("Role is required for searching correspondences.");
+                return CorrespondenceResult<IEnumerable<Guid>>.Failure("Role is required for searching correspondences.");
             }
 
             if (query.ResourceId == null)
             {
-                return Result<IEnumerable<Guid>>.Failure("ResourceId is required for searching correspondences.");
+                return CorrespondenceResult<IEnumerable<Guid>>.Failure("ResourceId is required for searching correspondences.");
             }
             // Denne returnerer en liste med guids
             // Sjekk hva den returnerer ordentlig
@@ -36,16 +37,16 @@ internal class Handler : IHandler<Query, Result<IEnumerable<Guid>>>
                 from: query.From?.ToUniversalTime(),
                 to: query.To?.ToUniversalTime(),
                 status: (CorrespondenceStatusExt?)query.Status,
-                role: query.Role,
+                role: (HttpClients.CorrespondencesRoleType?)query.Role,
                 onBehalfOf: query.OnBehalfOf,
                 sendersReference: query.SendersReference,
                 idempotentKey: query.IdempotencyKey);
 
-            return Result<IEnumerable<Guid>>.Success(response.Ids);
+            return CorrespondenceResult<IEnumerable<Guid>>.Success(response.Ids);
         }
         catch (AltinnCorrespondenceException<ProblemDetails> e)
         {
-            return Result<IEnumerable<Guid>>.Failure(e.Result.Detail);
+            return CorrespondenceResult<IEnumerable<Guid>>.Failure(e.Result.Detail);
         }
         catch (Polly.ExecutionRejectedException e)
         {
