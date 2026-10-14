@@ -1,6 +1,8 @@
+using Altinn.Dd.Correspondence.Exceptions;
 using Altinn.Dd.Correspondence.HttpClients;
 using Altinn.Dd.Correspondence.Models;
 using Altinn.Dd.Correspondence.Tests.TestSupport;
+using Polly.Timeout;
 using System.Net;
 
 using CorrespondenceSend = Altinn.Dd.Correspondence.Features.Send;
@@ -277,6 +279,98 @@ public class SendHandlerTests
         Assert.Contains($"idempotentKey={details.IdempotencyKey}", harness.LastRequestQuery);
         Assert.Contains($"resourceId={HandlerHarness.ResourceId}", harness.LastRequestQuery);
         Assert.Contains("role=Sender", harness.LastRequestQuery);
+    }
+
+    [Fact]
+    public async Task Send_WhenTheIdempotencyKeyIsAlreadyUsedAndTheLookupCannotReachAltinn_ThrowsTheConflict()
+    {
+        // A transport failure during the lookup says nothing about the send; the caller gets the
+        // original 409, not the lookup's exception.
+        using var harness = new HandlerHarness()
+            .RespondsWithProblem(HttpMethod.Post, HttpStatusCode.Conflict, "1034: duplicate idempotent key")
+            .Throws(HttpMethod.Get, new HttpRequestException("Connection reset"));
+        var sut = new CorrespondenceSend.Handler(harness.Client(), harness.Options());
+
+        var exception = await Assert.ThrowsAsync<AltinnCorrespondenceException>(() => sut.Handle(Details()));
+
+        Assert.Equal((int)HttpStatusCode.Conflict, exception.StatusCode);
+    }
+
+    [Fact]
+    public async Task Send_WhenTheIdempotencyKeyIsAlreadyUsedAndTheLookupIsRejectedByThePipeline_ThrowsTheTranslatedFailure()
+    {
+        // Polly types must not reach callers from the lookup either.
+        var rejection = new TimeoutRejectedException();
+        using var harness = new HandlerHarness()
+            .RespondsWithProblem(HttpMethod.Post, HttpStatusCode.Conflict, "1034: duplicate idempotent key")
+            .Throws(HttpMethod.Get, rejection);
+        var sut = new CorrespondenceSend.Handler(harness.Client(), harness.Options());
+
+        var exception = await Assert.ThrowsAsync<CorrespondenceServiceException>(() => sut.Handle(Details()));
+
+        Assert.Same(rejection, exception.InnerException);
+    }
+
+    [Fact]
+    public async Task Send_WhenTheIdempotencyKeyIsAlreadyUsedAndTheCorrespondenceCannotBeRead_ThrowsTheConflict()
+    {
+        // The search finds the correspondence, but reading it fails.
+        var existingId = Guid.NewGuid();
+        using var harness = new HandlerHarness()
+            .RespondsWithProblem(HttpMethod.Post, HttpStatusCode.Conflict, "1034: duplicate idempotent key")
+            .RespondsWithProblem(HttpMethod.Get, $"*/correspondence/api/v1/correspondence/{existingId}", HttpStatusCode.NotFound, "Not found")
+            .RespondsWith(HttpMethod.Get, new CorrespondencesExt { Ids = [existingId] });
+        var sut = new CorrespondenceSend.Handler(harness.Client(), harness.Options());
+
+        var exception = await Assert.ThrowsAsync<AltinnCorrespondenceException>(() => sut.Handle(Details()));
+
+        Assert.Equal((int)HttpStatusCode.Conflict, exception.StatusCode);
+        Assert.Equal(3, harness.RequestCount);
+    }
+
+    [Fact]
+    public async Task Send_WhenTheIdempotencyKeyMatchesSeveralCorrespondences_ReturnsAllOfThemWithTheFirstSendersReference()
+    {
+        var firstId = Guid.NewGuid();
+        var secondId = Guid.NewGuid();
+        using var harness = new HandlerHarness()
+            .RespondsWithProblem(HttpMethod.Post, HttpStatusCode.Conflict, "1034: duplicate idempotent key")
+            .RespondsWith(HttpMethod.Get, $"*/correspondence/api/v1/correspondence/{firstId}", new CorrespondenceOverviewExt
+            {
+                ResourceId = HandlerHarness.ResourceId,
+                SendersReference = "first-reference",
+                CorrespondenceId = firstId,
+                Status = CorrespondenceStatusExt.Published,
+                Recipient = "0192:987654321"
+            })
+            .RespondsWith(HttpMethod.Get, $"*/correspondence/api/v1/correspondence/{secondId}", new CorrespondenceOverviewExt
+            {
+                ResourceId = HandlerHarness.ResourceId,
+                SendersReference = "second-reference",
+                CorrespondenceId = secondId,
+                Status = CorrespondenceStatusExt.Initialized,
+                Recipient = "0192:912345678"
+            })
+            .RespondsWith(HttpMethod.Get, new CorrespondencesExt { Ids = [firstId, secondId] });
+        var sut = new CorrespondenceSend.Handler(harness.Client(), harness.Options());
+
+        var result = await sut.Handle(Details());
+
+        Assert.True(result.IsSuccess, result.Error);
+        Assert.Collection(result.Value!.InitalizedCorrespondences.Correspondences,
+            correspondence =>
+            {
+                Assert.Equal(firstId, correspondence.CorrespondenceId);
+                Assert.Equal(CorrespondenceStatus.Published, correspondence.Status);
+                Assert.Equal("0192:987654321", correspondence.Recipient);
+            },
+            correspondence =>
+            {
+                Assert.Equal(secondId, correspondence.CorrespondenceId);
+                Assert.Equal(CorrespondenceStatus.Initialized, correspondence.Status);
+                Assert.Equal("0192:912345678", correspondence.Recipient);
+            });
+        Assert.Equal("first-reference", result.Value.SendersReference);
     }
 
     [Fact]
