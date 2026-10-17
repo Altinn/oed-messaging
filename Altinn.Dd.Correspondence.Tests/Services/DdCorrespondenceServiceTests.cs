@@ -192,4 +192,18 @@ public class DdCorrespondenceServiceTests
         Assert.True(result.IsSuccess, result.Error);
         Assert.Null(result.Value);
     }
+
+    [Fact]
+    public async Task GetDialogId_WhenTheGetFails_PassesOnTheErrorCodeAndStatus()
+    {
+        var request = new Request(Guid.NewGuid());
+        _get.Handle(request).Returns(CorrespondenceResult<CorrespondenceOverview>.Failure("The requested correspondence was not found", 1001, 404));
+
+        var result = await _sut.GetDialogId(request);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("The requested correspondence was not found", result.Error);
+        Assert.Equal(1001, result.ErrorCode);
+        Assert.Equal(404, result.StatusCode);
+    }
 }

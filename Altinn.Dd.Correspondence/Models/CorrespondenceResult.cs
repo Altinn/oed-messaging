@@ -28,27 +28,52 @@ public sealed class CorrespondenceResult<T>
     /// <summary>Gets the rejection detail reported by the API, or an empty string on success.</summary>
     public string Error { get; }
 
+    /// <summary>
+    /// Gets Altinn's numeric error code for the rejection (the <c>errorCode</c> of its problem
+    /// document, for example 1054), or <c>null</c> on success, for a rejection made by the library
+    /// itself, or when Altinn sent none.
+    /// </summary>
+    public int? ErrorCode { get; }
+
+    /// <summary>
+    /// Gets the HTTP status of the rejection, or <c>null</c> on success and for a rejection made by
+    /// the library itself.
+    /// </summary>
+    public int? StatusCode { get; }
+
     private CorrespondenceResult(
         bool isSuccess,
         T? value,
-        string error)
+        string error,
+        int? errorCode,
+        int? statusCode)
     {
         IsSuccess = isSuccess;
         Value = value;
         Error = error;
+        ErrorCode = errorCode;
+        StatusCode = statusCode;
     }
 
     /// <summary>Creates a successful result carrying <paramref name="value"/>.</summary>
     /// <param name="value">The value the operation produced.</param>
     /// <returns>A successful result.</returns>
     public static CorrespondenceResult<T> Success(T value) =>
-        new(true, value, string.Empty);
+        new(true, value, string.Empty, null, null);
 
     /// <summary>Creates a failed result carrying <paramref name="error"/>.</summary>
     /// <param name="error">The rejection detail reported by the API.</param>
     /// <returns>A failed result.</returns>
     public static CorrespondenceResult<T> Failure(string error) =>
-        new(false, default, error);
+        new(false, default, error, null, null);
+
+    /// <summary>Creates a failed result carrying the API's rejection detail, error code and status.</summary>
+    /// <param name="error">The rejection detail reported by the API.</param>
+    /// <param name="errorCode">Altinn's numeric error code, if it sent one.</param>
+    /// <param name="statusCode">The HTTP status of the rejection.</param>
+    /// <returns>A failed result.</returns>
+    public static CorrespondenceResult<T> Failure(string error, int? errorCode, int? statusCode) =>
+        new(false, default, error, errorCode, statusCode);
 
     /// <summary>
     /// Executes one of two functions based on the result state

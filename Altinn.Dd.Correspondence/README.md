@@ -236,6 +236,13 @@ exception — but only for the statuses the generated client documents for that 
 | `Search` | 400, 401 | anything else, including 404 |
 | `Get` | 400, 401, 404 | anything else |
 
+A failure result carries Altinn's rejection three ways: `Error` is the message text, `ErrorCode` is
+Altinn's numeric code (the `errorCode` of its problem document, for example 1054 for "Dialogporten
+dialog with the given id was not found"), and `StatusCode` is the HTTP status. Altinn's message text
+carries no code, so use `ErrorCode` to tell rejections apart. Both are `null` for a rejection the
+library makes itself, such as a `TransmissionType` without a `DialogId`, and `ErrorCode` is `null`
+when Altinn sends no code.
+
 Anything not in the middle column — including a 5xx that outlives the retry policy, and a
 transport failure — surfaces as an exception, so keep a try/catch around the call as well as
 checking the result. Rejections from the resilience pipeline arrive as

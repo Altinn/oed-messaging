@@ -46,7 +46,7 @@ internal class Handler : IHandler<Query, CorrespondenceResult<IEnumerable<Guid>>
         }
         catch (AltinnCorrespondenceException<ProblemDetails> e)
         {
-            return CorrespondenceResult<IEnumerable<Guid>>.Failure(e.Result.Detail);
+            return ApiRejection.ToFailure<IEnumerable<Guid>>(e);
         }
         catch (Polly.ExecutionRejectedException e)
         {

@@ -38,6 +38,13 @@ internal sealed class HandlerHarness : IDisposable
         => Responds(method, HttpStatusCode.OK, JsonSerializer.Serialize(responseBody));
 
     /// <summary>Responds with an RFC 7807 problem document, the shape the client turns into a failure result.</summary>
+    /// <summary>
+    /// Responds with a problem document shaped like Altinn's: the numeric code in an <c>errorCode</c>
+    /// extension and only the message in <c>detail</c>.
+    /// </summary>
+    public HandlerHarness RespondsWithProblem(HttpMethod method, HttpStatusCode status, string detail, int errorCode)
+        => Responds(method, status, JsonSerializer.Serialize(new { type = "about:blank", title = "Not Found", status = (int)status, detail, errorCode }));
+
     public HandlerHarness RespondsWithProblem(HttpMethod method, HttpStatusCode status, string detail)
         => Responds(method, status, JsonSerializer.Serialize(new { type = "about:blank", title = "Bad Request", status = (int)status, detail }));
 

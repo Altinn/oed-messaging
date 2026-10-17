@@ -90,7 +90,12 @@ public sealed class DdCorrespondenceService : IDdCorrespondenceService
 
     /// <inheritdoc />
     public async Task<CorrespondenceResult<Guid?>> GetDialogId(Request request)
-        => (await _get.Handle(request)).Match(
-            onSuccess: overview => CorrespondenceResult<Guid?>.Success(overview.DialogId),
-            onFailure: CorrespondenceResult<Guid?>.Failure);
+    {
+        var overview = await _get.Handle(request);
+
+        // Pass a rejection on with its error code and status, not just its text.
+        return overview.IsSuccess
+            ? CorrespondenceResult<Guid?>.Success(overview.Value!.DialogId)
+            : CorrespondenceResult<Guid?>.Failure(overview.Error, overview.ErrorCode, overview.StatusCode);
+    }
 }

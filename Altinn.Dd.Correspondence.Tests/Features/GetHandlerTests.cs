@@ -94,4 +94,18 @@ public class GetHandlerTests
         Assert.Equal(1, harness.RequestCount);
         Assert.Equal($"/correspondence/api/v1/correspondence/{correspondenceId}", harness.LastRequestPath);
     }
+
+    [Fact]
+    public async Task Get_WhenAltinnRejects_CarriesItsErrorCodeAndStatus()
+    {
+        using var harness = new HandlerHarness()
+            .RespondsWithProblem(HttpMethod.Get, HttpStatusCode.NotFound, "The requested correspondence was not found", 1001);
+        var sut = new Handler(harness.Client());
+
+        var result = await sut.Handle(new Request(Guid.NewGuid()));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(1001, result.ErrorCode);
+        Assert.Equal(404, result.StatusCode);
+    }
 }

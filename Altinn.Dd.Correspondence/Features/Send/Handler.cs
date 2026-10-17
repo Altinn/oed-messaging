@@ -66,7 +66,7 @@ internal class Handler(
         // the wrong recipient as delivered.
         catch (AltinnCorrespondenceException<ProblemDetails> e)
         {
-            return CorrespondenceResult<ReceiptExternal>.Failure(e.Result.Detail);
+            return ApiRejection.ToFailure<ReceiptExternal>(e);
         }
         catch (Polly.ExecutionRejectedException e)
         {

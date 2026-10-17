@@ -23,7 +23,7 @@ internal class Handler : IHandler<Request, CorrespondenceResult<CorrespondenceOv
         }
         catch (AltinnCorrespondenceException<ProblemDetails> e)
         {
-            return CorrespondenceResult<CorrespondenceOverview>.Failure(e.Result.Detail);
+            return ApiRejection.ToFailure<CorrespondenceOverview>(e);
         }
         catch (Polly.ExecutionRejectedException e)
         {

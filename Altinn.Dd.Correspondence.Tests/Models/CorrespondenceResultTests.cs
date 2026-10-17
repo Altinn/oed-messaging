@@ -68,4 +68,27 @@ public class CorrespondenceResultTests
 
         Assert.Equal("handled", matched);
     }
+
+    [Fact]
+    public void Success_And_PlainFailure_CarryNoErrorCodeOrStatus()
+    {
+        var success = CorrespondenceResult<string>.Success("value");
+        var failure = CorrespondenceResult<string>.Failure("went wrong");
+
+        Assert.Null(success.ErrorCode);
+        Assert.Null(success.StatusCode);
+        Assert.Null(failure.ErrorCode);
+        Assert.Null(failure.StatusCode);
+    }
+
+    [Fact]
+    public void Failure_WithCodes_CarriesThem()
+    {
+        var result = CorrespondenceResult<string>.Failure("not found", 1054, 404);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("not found", result.Error);
+        Assert.Equal(1054, result.ErrorCode);
+        Assert.Equal(404, result.StatusCode);
+    }
 }
