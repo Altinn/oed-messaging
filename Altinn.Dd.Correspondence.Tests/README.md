@@ -14,14 +14,17 @@ These hold most of the value: each builds the real handler over a mocked transpo
 - **SendHandlerTests**: recipient formatting (the `0192:` country-code rule and its pass-through
   cases), notification channel selection, senders-reference defaulting, idempotency key and
   `IgnoreReservation` forwarding, and problem-document translation. Assertions inspect the request
-  body the handler actually put on the wire. Also covers the Dialogporten references (`DialogId`,
+  body the handler actually put on the wire. Problem-document translation includes carrying
+  Altinn's `errorCode` extension and the HTTP status onto the failure result. Also covers the
+  Dialogporten references (`DialogId`,
   every `TransmissionType` by name, the local guard, Altinn's dialog rejections), that a 409
   (duplicate idempotency key) is thrown without looking anything up, and that a transport failure
   surfaces as `HttpRequestException`.
 - **SearchHandlerTests**: the `Role` and `ResourceId` guard clauses — including that a rejected
-  query costs no API call — filter forwarding, and problem-document translation.
+  query costs no API call — filter forwarding, and problem-document translation, including the
+  error code and HTTP status.
 - **GetHandlerTests**: the round trip from a correspondence id to a mapped overview, the requested
-  URL, and problem-document translation.
+  URL, and problem-document translation, including the error code and HTTP status.
 
 ### Mapper tests — `Extensions/`
 
@@ -37,7 +40,8 @@ These hold most of the value: each builds the real handler over a mocked transpo
   test compares one public enum against the generated enum it is cast to, member for member.
 - **CorrespondenceResultTests**: `CorrespondenceResult<T>` itself, which replaced three
   near-identical result types. Covers the success and failure shapes and both `Match` branches,
-  including that a failure never passes its null value to the success branch.
+  including that a failure never passes its null value to the success branch, and that
+  `ErrorCode` and `StatusCode` are set only by the failure overload that takes them.
 
 ### Resilience tests — `Extensions/`
 
@@ -60,7 +64,8 @@ These hold most of the value: each builds the real handler over a mocked transpo
 
 - **DdCorrespondenceServiceTests**: `DdCorrespondenceService` is a thin facade over the three
   handlers, so these pin that wiring — one handler per operation, no crossed wires — and
-  `GetDialogId`, which reads the dialog id off the overview.
+  `GetDialogId`, which reads the dialog id off the overview and passes a failed read's error code
+  and HTTP status on.
 - **DdCorrespondenceServiceIntegrationTests**: resolves the service out of a real host, through
   `AddDdCorrespondenceService` and the Maskinporten handler chain, with HTTP mocked at the primary
   handler. This is what catches a broken DI registration.
@@ -68,7 +73,8 @@ These hold most of the value: each builds the real handler over a mocked transpo
 ### Test support — `TestSupport/`
 
 - **HandlerHarness**: builds a handler over `MockHttpMessageHandler`, records the request the
-  handler sent (body, path, query, count), and hands back the deserialized wire contract. `Throws`
+  handler sent (body, path, query, count), and hands back the deserialized wire contract.
+  `RespondsWithProblem` answers with a problem document, optionally carrying an `errorCode`. `Throws`
   makes a request fail the way a broken transport or a rejecting pipeline does.
 - **MaskinportenStub**: stubs the Maskinporten metadata, token and Altinn exchange calls, and
   generates a throwaway RSA JWK, so tests that need the whole DI stack run without credentials.
