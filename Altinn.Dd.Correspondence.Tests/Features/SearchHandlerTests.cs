@@ -114,4 +114,18 @@ public class SearchHandlerTests
         Assert.Equal("Invalid resource id", result.Error);
         Assert.Null(result.Value);
     }
+
+    [Fact]
+    public async Task Search_WhenAltinnRejects_CarriesItsErrorCodeAndStatus()
+    {
+        using var harness = new HandlerHarness()
+            .RespondsWithProblem(HttpMethod.Get, HttpStatusCode.BadRequest, "Invalid search", 1099);
+        var sut = new Handler(harness.Client());
+
+        var result = await sut.Handle(AValidQuery());
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(1099, result.ErrorCode);
+        Assert.Equal(400, result.StatusCode);
+    }
 }

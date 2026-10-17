@@ -357,4 +357,49 @@ public class SendHandlerTests
         Assert.Equal(detail, result.Error);
         Assert.Equal(1, harness.RequestCount);
     }
+
+    [Fact]
+    public async Task Send_WhenAltinnRejects_CarriesItsErrorCodeAndStatus()
+    {
+        // Altinn sends the numeric code in an "errorCode" extension; the detail is only the message.
+        using var harness = new HandlerHarness()
+            .RespondsWithProblem(HttpMethod.Post, HttpStatusCode.NotFound, "Dialogporten dialog with the given id was not found", 1054);
+        var sut = new CorrespondenceSend.Handler(harness.Client(), harness.Options());
+
+        var result = await sut.Handle(Details());
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Dialogporten dialog with the given id was not found", result.Error);
+        Assert.Equal(1054, result.ErrorCode);
+        Assert.Equal(404, result.StatusCode);
+    }
+
+    [Fact]
+    public async Task Send_WhenTheProblemHasNoErrorCode_CarriesTheStatusOnly()
+    {
+        using var harness = new HandlerHarness()
+            .RespondsWithProblem(HttpMethod.Post, HttpStatusCode.BadRequest, "1020: Message title cannot be empty");
+        var sut = new CorrespondenceSend.Handler(harness.Client(), harness.Options());
+
+        var result = await sut.Handle(Details());
+
+        Assert.True(result.IsFailure);
+        Assert.Null(result.ErrorCode);
+        Assert.Equal(400, result.StatusCode);
+    }
+
+    [Fact]
+    public async Task Send_WhenTheLibraryRejectsLocally_CarriesNoErrorCodeOrStatus()
+    {
+        var details = Details();
+        details.TransmissionType = TransmissionType.Alert;
+        using var harness = new HandlerHarness();
+        var sut = new CorrespondenceSend.Handler(harness.Client(), harness.Options());
+
+        var result = await sut.Handle(details);
+
+        Assert.True(result.IsFailure);
+        Assert.Null(result.ErrorCode);
+        Assert.Null(result.StatusCode);
+    }
 }

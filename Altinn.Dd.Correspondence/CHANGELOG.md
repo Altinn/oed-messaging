@@ -19,6 +19,7 @@ See [Breaking changes in 3.0.0](README.md#breaking-changes-in-300) for migration
 
 For callers already on a 3.0.0 pre-release, these entries are new since `3.0.0-beta.2`:
 
+- `CorrespondenceResult<T>` gains `ErrorCode` and `StatusCode` for API rejections.
 - `Result<T>` is renamed `CorrespondenceResult<T>` and moves from `Altinn.Dd.Correspondence` to
   `Altinn.Dd.Correspondence.Models`, so it cannot clash with a `Result<T>` from another library.
 - `CorrespondencesRoleType` and `EmailContentType` move back from
@@ -60,6 +61,9 @@ For callers already on a 3.0.0 pre-release, these entries are new since `3.0.0-b
 
 ### Added
 
+- `CorrespondenceResult<T>.ErrorCode` and `CorrespondenceResult<T>.StatusCode`: a failure from an API
+  rejection now carries Altinn's numeric error code (from the problem document's `errorCode`) and the
+  HTTP status, alongside the message in `Error`. `GetDialogId` passes them on.
 - XML documentation for the whole public API.
 - README sections on error handling (which HTTP statuses return a failure result and which throw)
   and on the resilience defaults, including how to change them.
