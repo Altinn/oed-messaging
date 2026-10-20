@@ -23,7 +23,3 @@ Guidance for Claude Code (claude.ai/code) in this repository.
 **Build `DateTimeOffset` fixtures with a non-zero offset** (e.g. `TimeSpan.FromHours(2)`). With `TimeSpan.Zero`, `.UtcDateTime` and `.DateTime` are identical, so the test cannot fail on an offset-shifting bug.
 
 Configure fakes to **honor their arguments** (e.g. return values filtered by the requested ids) — a fake that ignores args can mis-drive the real collaborators it feeds. For a **generic** method the matcher's type argument picks the closed method: `Arg.Any<object>()` binds to `Method<object>` and never matches a real `Method<Concrete>` call, so a `DidNotReceive` on it passes vacuously. Match the concrete type, and match the overload's arity — a short overload implemented as a default interface method is a separate method to the fake.
-
-## Azure Key Vault
-
-Never read, list or enumerate Azure Key Vault secrets — no `az keyvault secret show`/`list`, no `SecretClient`, no portal scraping, and not even secret names or value lengths. If a task needs a secret value, ask the user to supply it or to run the command themselves.
