@@ -274,6 +274,8 @@ var details = new DdCorrespondenceDetails
   "Gå til tjeneste".
 - A reply option is a plain link (GET): the button opens the URL in the recipient's browser. Logic
   belongs behind that URL.
+- **Order is not kept.** In tt02 on 2026-10-30, two options came back from `Get`, and showed in the
+  inbox, in the reverse of the order they were sent.
 
 ## Complete Example
 
