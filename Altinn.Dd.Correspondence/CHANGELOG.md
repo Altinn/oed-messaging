@@ -15,6 +15,13 @@ what a caller has to change; longer migration notes belong in the README, linked
 
 See [Breaking changes in 3.0.0](README.md#breaking-changes-in-300) for migration examples.
 
+### Since 3.0.0-rc
+
+For callers already on `3.0.0-rc`:
+
+- `IDdCorrespondenceService.Purge` and `Features.Purge.Request`: purge a correspondence as its sender
+  before it is published. A class that implements the interface itself has to add it.
+
 ### Since 3.0.0-beta.2
 
 For callers already on a 3.0.0 pre-release, these entries are new since `3.0.0-beta.2`:
@@ -53,8 +60,8 @@ For callers already on a 3.0.0 pre-release, these entries are new since `3.0.0-b
   result. Before 3.0.0 nothing threw this exception.
 - `DdCorrespondenceDetails.AllowForwarding` is removed. It never had an effect in Altinn 3: the
   Correspondence API has no forwarding flag, so the value was never sent. Delete the assignment.
-- `IDdCorrespondenceService` has a new member, `GetDialogId`. A class that implements the interface
-  itself has to add it.
+- `IDdCorrespondenceService` has two new members, `GetDialogId` and `Purge`. A class that implements
+  the interface itself has to add them.
 - The `Polly`, `Microsoft.Extensions.Http.Polly` and `System.ComponentModel.Annotations`
   dependencies are removed (see Removed). Code that used them through this package has to reference
   them directly.
@@ -74,6 +81,8 @@ For callers already on a 3.0.0 pre-release, these entries are new since `3.0.0-b
   correspondence belongs to.
 - `ReferenceType.DialogportenTransmissionType`. Reading a correspondence that carries this
   reference type used to fail to deserialize.
+- `IDdCorrespondenceService.Purge`, to purge a correspondence as its sender before it is published.
+  See [Purge](README.md#purgerequest--correspondenceresultguid).
 
 ### Changed
 

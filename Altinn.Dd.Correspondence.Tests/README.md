@@ -25,6 +25,9 @@ These hold most of the value: each builds the real handler over a mocked transpo
   error code and HTTP status.
 - **GetHandlerTests**: the round trip from a correspondence id to a mapped overview, the requested
   URL, and problem-document translation, including the error code and HTTP status.
+- **PurgeHandlerTests**: the DELETE to the purge endpoint, the returned id, Altinn's refusals (1013
+  for a published correspondence, 1001 for an unknown one) as failure results with their error code
+  and HTTP status, and that an undocumented status or a transport failure throws.
 
 ### Mapper tests — `Extensions/`
 
@@ -62,7 +65,7 @@ These hold most of the value: each builds the real handler over a mocked transpo
 
 ### Service tests — `Services/`
 
-- **DdCorrespondenceServiceTests**: `DdCorrespondenceService` is a thin facade over the three
+- **DdCorrespondenceServiceTests**: `DdCorrespondenceService` is a thin facade over the four
   handlers, so these pin that wiring — one handler per operation, no crossed wires — and
   `GetDialogId`, which reads the dialog id off the overview and passes a failed read's error code
   and HTTP status on.

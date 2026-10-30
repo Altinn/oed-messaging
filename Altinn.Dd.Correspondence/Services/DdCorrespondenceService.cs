@@ -2,6 +2,7 @@ using Altinn.Dd.Correspondence.Features;
 using Altinn.Dd.Correspondence.Features.Get;
 using Altinn.Dd.Correspondence.Features.Search;
 using Altinn.Dd.Correspondence.Models;
+using PurgeRequest = Altinn.Dd.Correspondence.Features.Purge.Request;
 
 namespace Altinn.Dd.Correspondence.Services;
 
@@ -48,6 +49,20 @@ public interface IDdCorrespondenceService
     /// deadline: if the dialog cannot be created, Altinn fails the correspondence and the id stays
     /// <c>null</c>. <see cref="Get"/> shows that as <c>CorrespondenceStatus.Failed</c>.</remarks>
     Task<CorrespondenceResult<Guid?>> GetDialogId(Request request);
+
+    /// <summary>
+    /// Purges a correspondence as its sender. Altinn allows that only before the correspondence is
+    /// published.
+    /// </summary>
+    /// <param name="request">The correspondence to purge.</param>
+    /// <returns>The id of the purged correspondence, or a failure result.</returns>
+    /// <remarks>Use it to withdraw a correspondence that will never be delivered as intended, such as
+    /// one sent to a dialog the recipient has since deleted: Altinn accepts that send, cannot add the
+    /// transmission, and would otherwise publish the correspondence hours later without one. A
+    /// published correspondence is refused with error code 1013. After a purge, <see cref="Get"/>
+    /// returns error code 1001 (HTTP 404) for the correspondence. The call is retried on a 5xx, so a
+    /// purge whose first attempt went through can come back as 1014 ("already purged") or 1001.</remarks>
+    Task<CorrespondenceResult<Guid>> Purge(PurgeRequest request);
 }
 
 /// <summary>
@@ -59,6 +74,7 @@ public sealed class DdCorrespondenceService : IDdCorrespondenceService
     private readonly IHandler<DdCorrespondenceDetails, CorrespondenceResult<ReceiptExternal>> _send;
     private readonly IHandler<Query, CorrespondenceResult<IEnumerable<Guid>>> _search;
     private readonly IHandler<Request, CorrespondenceResult<CorrespondenceOverview>> _get;
+    private readonly IHandler<PurgeRequest, CorrespondenceResult<Guid>> _purge;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DdCorrespondenceService"/> class.
@@ -66,14 +82,17 @@ public sealed class DdCorrespondenceService : IDdCorrespondenceService
     /// <param name="send">Handler for the send operation.</param>
     /// <param name="search">Handler for the search operation.</param>
     /// <param name="get">Handler for the get operation.</param>
+    /// <param name="purge">Handler for the purge operation.</param>
     public DdCorrespondenceService(
         IHandler<DdCorrespondenceDetails, CorrespondenceResult<ReceiptExternal>> send,
         IHandler<Query, CorrespondenceResult<IEnumerable<Guid>>> search,
-        IHandler<Request, CorrespondenceResult<CorrespondenceOverview>> get)
+        IHandler<Request, CorrespondenceResult<CorrespondenceOverview>> get,
+        IHandler<PurgeRequest, CorrespondenceResult<Guid>> purge)
     {
         _send = send;
         _search = search;
         _get = get;
+        _purge = purge;
     }
 
     /// <inheritdoc />
@@ -98,4 +117,8 @@ public sealed class DdCorrespondenceService : IDdCorrespondenceService
             ? CorrespondenceResult<Guid?>.Success(overview.Value!.DialogId)
             : CorrespondenceResult<Guid?>.Failure(overview.Error, overview.ErrorCode, overview.StatusCode);
     }
+
+    /// <inheritdoc />
+    public Task<CorrespondenceResult<Guid>> Purge(PurgeRequest request)
+        => _purge.Handle(request);
 }

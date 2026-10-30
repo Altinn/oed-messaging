@@ -82,6 +82,7 @@ public static class ServiceCollectionExtensions
         services.AddTransient<IHandler<DdCorrespondenceDetails, CorrespondenceResult<ReceiptExternal>>, Features.Send.Handler>();
         services.AddTransient<IHandler<Query, CorrespondenceResult<IEnumerable<Guid>>>, Features.Search.Handler>();
         services.AddTransient<IHandler<Request, CorrespondenceResult<CorrespondenceOverview>>, Features.Get.Handler>();
+        services.AddTransient<IHandler<Features.Purge.Request, CorrespondenceResult<Guid>>, Features.Purge.Handler>();
         services.AddTransient<IDdCorrespondenceService, DdCorrespondenceService>();
 
         ConfigureMaskinportenHttpClient(services, correspondenceOptions);

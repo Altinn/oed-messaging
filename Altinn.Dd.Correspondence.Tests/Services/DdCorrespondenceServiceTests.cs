@@ -4,6 +4,7 @@ using Altinn.Dd.Correspondence.Features.Search;
 using Altinn.Dd.Correspondence.Models;
 using Altinn.Dd.Correspondence.Services;
 using NSubstitute;
+using PurgeRequest = Altinn.Dd.Correspondence.Features.Purge.Request;
 
 namespace Altinn.Dd.Correspondence.Tests.Services;
 
@@ -24,11 +25,14 @@ public class DdCorrespondenceServiceTests
     private readonly IHandler<Request, CorrespondenceResult<CorrespondenceOverview>> _get =
         Substitute.For<IHandler<Request, CorrespondenceResult<CorrespondenceOverview>>>();
 
+    private readonly IHandler<PurgeRequest, CorrespondenceResult<Guid>> _purge =
+        Substitute.For<IHandler<PurgeRequest, CorrespondenceResult<Guid>>>();
+
     private readonly DdCorrespondenceService _sut;
 
     public DdCorrespondenceServiceTests()
     {
-        _sut = new DdCorrespondenceService(_send, _search, _get);
+        _sut = new DdCorrespondenceService(_send, _search, _get, _purge);
     }
 
     [Fact]
@@ -45,6 +49,7 @@ public class DdCorrespondenceServiceTests
         await _send.Received(1).Handle(details);
         await _search.DidNotReceiveWithAnyArgs().Handle(default!);
         await _get.DidNotReceiveWithAnyArgs().Handle(default!);
+        await _purge.DidNotReceiveWithAnyArgs().Handle(default!);
     }
 
     [Fact]
@@ -60,6 +65,7 @@ public class DdCorrespondenceServiceTests
         await _search.Received(1).Handle(query);
         await _send.DidNotReceiveWithAnyArgs().Handle(default!);
         await _get.DidNotReceiveWithAnyArgs().Handle(default!);
+        await _purge.DidNotReceiveWithAnyArgs().Handle(default!);
     }
 
     [Fact]
@@ -75,6 +81,23 @@ public class DdCorrespondenceServiceTests
         await _get.Received(1).Handle(request);
         await _send.DidNotReceiveWithAnyArgs().Handle(default!);
         await _search.DidNotReceiveWithAnyArgs().Handle(default!);
+        await _purge.DidNotReceiveWithAnyArgs().Handle(default!);
+    }
+
+    [Fact]
+    public async Task Purge_ForwardsToThePurgeHandlerAlone()
+    {
+        var request = new PurgeRequest(Guid.NewGuid());
+        var expected = CorrespondenceResult<Guid>.Success(request.CorrespondenceId);
+        _purge.Handle(request).Returns(expected);
+
+        var result = await _sut.Purge(request);
+
+        Assert.Same(expected, result);
+        await _purge.Received(1).Handle(request);
+        await _send.DidNotReceiveWithAnyArgs().Handle(default!);
+        await _search.DidNotReceiveWithAnyArgs().Handle(default!);
+        await _get.DidNotReceiveWithAnyArgs().Handle(default!);
     }
 
     // GetDialogId is the one method that does more than forward: it reads the dialog id off the
