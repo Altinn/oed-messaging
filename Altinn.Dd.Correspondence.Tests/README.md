@@ -17,7 +17,9 @@ These hold most of the value: each builds the real handler over a mocked transpo
   body the handler actually put on the wire. Problem-document translation includes carrying
   Altinn's `errorCode` extension and the HTTP status onto the failure result. Also covers the
   Dialogporten references (`DialogId`,
-  every `TransmissionType` by name, the local guard, Altinn's dialog rejections), that a 409
+  every `TransmissionType` by name, the local guard, Altinn's dialog rejections), reply options
+  (sent with their URL and text, left out when there are none, refused locally when there are more
+  than three or a `DialogId` is set, and Altinn's 1035 for a bad URL), that a 409
   (duplicate idempotency key) is thrown without looking anything up, and that a transport failure
   surfaces as `HttpRequestException`.
 - **SearchHandlerTests**: the `Role` and `ResourceId` guard clauses — including that a rejected

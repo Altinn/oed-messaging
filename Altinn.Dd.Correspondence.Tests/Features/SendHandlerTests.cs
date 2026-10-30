@@ -402,4 +402,115 @@ public class SendHandlerTests
         Assert.Null(result.ErrorCode);
         Assert.Null(result.StatusCode);
     }
+
+    [Fact]
+    public async Task ReplyOptions_WhenProvided_AreSentWithTheirUrlAndText()
+    {
+        var details = Details();
+        details.ReplyOptions =
+        [
+            new ReplyOption("https://example.no/estate", "Åpne Digitalt dødsbo"),
+            new ReplyOption("https://example.no/help")
+        ];
+
+        var (result, harness) = await Send(details);
+
+        Assert.True(result.IsSuccess, result.Error);
+        var sent = harness.SentCorrespondence().Correspondence.ReplyOptions;
+        Assert.NotNull(sent);
+        Assert.Collection(sent!,
+            option =>
+            {
+                Assert.Equal("https://example.no/estate", option.LinkURL);
+                Assert.Equal("Åpne Digitalt dødsbo", option.LinkText);
+            },
+            option =>
+            {
+                Assert.Equal("https://example.no/help", option.LinkURL);
+                Assert.Null(option.LinkText);
+            });
+    }
+
+    [Fact]
+    public async Task ReplyOptions_WhenNotProvided_AreNotSent()
+    {
+        var (_, harness) = await Send(Details());
+
+        Assert.Null(harness.SentCorrespondence().Correspondence.ReplyOptions);
+    }
+
+    [Fact]
+    public async Task ReplyOptions_WhenEmpty_AreNotSent()
+    {
+        var details = Details();
+        details.ReplyOptions = [];
+
+        var (result, harness) = await Send(details);
+
+        Assert.True(result.IsSuccess, result.Error);
+        Assert.Null(harness.SentCorrespondence().Correspondence.ReplyOptions);
+    }
+
+    [Fact]
+    public async Task ReplyOptions_AsManyAsAllowed_AreSent()
+    {
+        var details = Details();
+        details.ReplyOptions = Enumerable.Range(1, DdCorrespondenceDetails.MaxReplyOptions)
+            .Select(i => new ReplyOption($"https://example.no/{i}"))
+            .ToList();
+
+        var (result, harness) = await Send(details);
+
+        Assert.True(result.IsSuccess, result.Error);
+        Assert.Equal(DdCorrespondenceDetails.MaxReplyOptions, harness.SentCorrespondence().Correspondence.ReplyOptions!.Count);
+    }
+
+    [Fact]
+    public async Task ReplyOptions_MoreThanAllowed_FailWithoutCallingAltinn()
+    {
+        // Altinn would accept the correspondence and show none of the buttons.
+        var details = Details();
+        details.ReplyOptions = Enumerable.Range(1, DdCorrespondenceDetails.MaxReplyOptions + 1)
+            .Select(i => new ReplyOption($"https://example.no/{i}"))
+            .ToList();
+
+        var (result, harness) = await Send(details);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(CorrespondenceSend.Handler.TooManyReplyOptions, result.Error);
+        Assert.Null(result.ErrorCode);
+        Assert.Equal(0, harness.RequestCount);
+    }
+
+    [Fact]
+    public async Task ReplyOptions_WithDialogId_FailWithoutCallingAltinn()
+    {
+        // Altinn refuses GUI actions on a transmission with 1051.
+        var details = Details();
+        details.DialogId = Guid.NewGuid();
+        details.ReplyOptions = [new ReplyOption("https://example.no/estate")];
+
+        var (result, harness) = await Send(details);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(CorrespondenceSend.Handler.ReplyOptionsWithDialogId, result.Error);
+        Assert.Equal(0, harness.RequestCount);
+    }
+
+    [Fact]
+    public async Task ReplyOptions_WhenAltinnRejectsTheUrl_ReturnFailureCarryingItsErrorCode()
+    {
+        // The library leaves URL validation to Altinn: https, absolute, at most 255 characters.
+        using var harness = new HandlerHarness().RespondsWithProblem(HttpMethod.Post, HttpStatusCode.BadRequest,
+            "Reply options must be well-formed URIs and HTTPS with a max length of 255 characters", 1035);
+        var sut = new CorrespondenceSend.Handler(harness.Client(), harness.Options());
+        var details = Details();
+        details.ReplyOptions = [new ReplyOption("http://example.no/estate")];
+
+        var result = await sut.Handle(details);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(1035, result.ErrorCode);
+        Assert.Equal(400, result.StatusCode);
+    }
 }

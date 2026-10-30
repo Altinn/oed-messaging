@@ -249,6 +249,32 @@ has the same service owner as the new correspondence's resource; a mismatch is r
 failure result. A correspondence sent this way cannot reply to a specific earlier transmission —
 Altinn does not support that through Correspondence.
 
+### Reply options (buttons on the dialog)
+
+`DdCorrespondenceDetails.ReplyOptions` adds links the recipient can follow from the correspondence.
+Altinn shows each one as a button on the correspondence's Dialogporten dialog, opening the URL:
+
+```csharp
+var details = new DdCorrespondenceDetails
+{
+    Recipient = "01010112345",
+    Title = "Access",
+    Body = "...",
+    ReplyOptions = [new ReplyOption("https://example.no/estate/123", "Open the estate")]
+};
+```
+
+- **At most three.** With more, Altinn accepts the correspondence but shows none of the buttons, so the
+  library returns a failure result instead, without calling Altinn.
+- **Only on a correspondence that creates its own dialog.** Altinn refuses reply options on a
+  correspondence sent with `DialogId` (error code 1051), and the library refuses that combination
+  before sending. The buttons of a dialog are therefore those of the correspondence that created it.
+- **The URL** must be an absolute https URL of at most 255 characters; Altinn rejects anything else
+  with error code 1035, returned as a failure result. Without `LinkText`, Altinn labels the button
+  "Gå til tjeneste".
+- A reply option is a plain link (GET): the button opens the URL in the recipient's browser. Logic
+  belongs behind that URL.
+
 ## Complete Example
 
 See the `SendDdCorrespondence` project in this repository for a complete working example.

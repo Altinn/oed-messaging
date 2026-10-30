@@ -15,6 +15,11 @@ what a caller has to change; longer migration notes belong in the README, linked
 
 See [Breaking changes in 3.0.0](README.md#breaking-changes-in-300) for migration examples.
 
+### Since 3.0.0-rc.3
+
+- `DdCorrespondenceDetails.ReplyOptions` and `Models.ReplyOption`: links Altinn shows as buttons on
+  the correspondence's dialog. See [Reply options](README.md#reply-options-buttons-on-the-dialog).
+
 ### Since 3.0.0-rc
 
 For callers already on `3.0.0-rc`:
@@ -83,6 +88,10 @@ For callers already on a 3.0.0 pre-release, these entries are new since `3.0.0-b
   reference type used to fail to deserialize.
 - `IDdCorrespondenceService.Purge`, to purge a correspondence as its sender before it is published.
   See [Purge](README.md#purgerequest--correspondenceresultguid).
+- `DdCorrespondenceDetails.ReplyOptions`, with the new `Models.ReplyOption`: up to three links Altinn
+  shows as buttons on the correspondence's dialog. The library refuses more than three, and reply
+  options together with a `DialogId`, before sending. See
+  [Reply options](README.md#reply-options-buttons-on-the-dialog).
 
 ### Changed
 

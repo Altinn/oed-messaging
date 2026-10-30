@@ -84,4 +84,21 @@ public class DdCorrespondenceDetails
     /// Altinn uses <see cref="Models.TransmissionType.Information"/>.
     /// </summary>
     public TransmissionType? TransmissionType { get; set; }
+
+    /// <summary>
+    /// Gets or sets the links the recipient can follow from the correspondence, at most
+    /// <see cref="MaxReplyOptions"/>. Altinn shows them as buttons on the correspondence's dialog.
+    /// </summary>
+    /// <remarks>
+    /// Only a correspondence that creates its own dialog can have them: Altinn refuses them on a
+    /// correspondence sent with <see cref="DialogId"/> (error code 1051), so the buttons of a dialog
+    /// are those of the correspondence that created it.
+    /// </remarks>
+    public IList<ReplyOption>? ReplyOptions { get; set; }
+
+    /// <summary>
+    /// The most reply options Altinn turns into buttons. With more, it accepts the correspondence
+    /// and shows none of them, so the library refuses that before sending.
+    /// </summary>
+    public const int MaxReplyOptions = 3;
 }

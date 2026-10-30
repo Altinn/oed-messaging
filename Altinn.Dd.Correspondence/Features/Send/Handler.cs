@@ -17,6 +17,12 @@ internal class Handler(
     internal const string TransmissionTypeWithoutDialogId =
         "A TransmissionType can only be set together with a DialogId.";
 
+    internal const string ReplyOptionsWithDialogId =
+        "ReplyOptions cannot be set together with a DialogId: a transmission cannot add buttons to a dialog.";
+
+    internal static readonly string TooManyReplyOptions =
+        $"At most {DdCorrespondenceDetails.MaxReplyOptions} ReplyOptions are allowed; Altinn shows none when there are more.";
+
     private readonly DdCorrespondenceOptions _correspondenceOptions = optionsMonitor.CurrentValue;
 
     public async Task<CorrespondenceResult<ReceiptExternal>> Handle(DdCorrespondenceDetails correspondenceDetails)
@@ -25,6 +31,20 @@ internal class Handler(
         if (correspondenceDetails.TransmissionType is not null && correspondenceDetails.DialogId is null)
         {
             return CorrespondenceResult<ReceiptExternal>.Failure(TransmissionTypeWithoutDialogId);
+        }
+
+        var replyOptions = correspondenceDetails.ReplyOptions ?? [];
+
+        // Altinn rejects this too (1051), but only after a round trip.
+        if (replyOptions.Count > 0 && correspondenceDetails.DialogId is not null)
+        {
+            return CorrespondenceResult<ReceiptExternal>.Failure(ReplyOptionsWithDialogId);
+        }
+
+        // Altinn accepts this and silently shows no buttons at all.
+        if (replyOptions.Count > DdCorrespondenceDetails.MaxReplyOptions)
+        {
+            return CorrespondenceResult<ReceiptExternal>.Failure(TooManyReplyOptions);
         }
 
         var sendersReference = correspondenceDetails.SendersReference ?? $"{SenderReferencePrefix}{correspondenceDetails.IdempotencyKey}";
@@ -49,7 +69,8 @@ internal class Handler(
                     PropertyList = new Dictionary<string, string>(),
                     Notification = CreateNotification(correspondenceDetails.Notification, correspondenceDetails.ShipmentDatetime),
                     IgnoreReservation = correspondenceDetails.IgnoreReservation,
-                    ExternalReferences = CreateExternalReferences(correspondenceDetails)
+                    ExternalReferences = CreateExternalReferences(correspondenceDetails),
+                    ReplyOptions = CreateReplyOptions(replyOptions)
                 },
                 Recipients = [FormatRecipient(correspondenceDetails.Recipient ?? string.Empty)],
                 ExistingAttachments = [],
@@ -73,6 +94,16 @@ internal class Handler(
             throw Exceptions.ResilienceFailure.Translate(e);
         }
     }
+
+    // Without reply options the property is left unset, so the request stays as it was.
+    private static List<CorrespondenceReplyOptionExt>? CreateReplyOptions(IList<ReplyOption> replyOptions) =>
+        replyOptions.Count == 0
+            ? null
+            : replyOptions.Select(option => new CorrespondenceReplyOptionExt
+            {
+                LinkURL = option.LinkUrl,
+                LinkText = option.LinkText
+            }).ToList();
 
     private static List<ExternalReferenceExt>? CreateExternalReferences(DdCorrespondenceDetails correspondenceDetails)
     {
