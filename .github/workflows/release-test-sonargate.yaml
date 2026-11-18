@@ -64,8 +64,8 @@ jobs:
 
     - name: Build test projects
       run: |
-        dotnet build qa/Altinn.Dd.Tests.DependencyGate.Tests/Altinn.Dd.Tests.DependencyGate.Tests.csproj --configuration Release --no-restore
-        dotnet build qa/Altinn.Dd.Tests.Shared.Tests/Altinn.Dd.Tests.Shared.Tests.csproj --configuration Release --no-restore
+        dotnet build qa/Altinn.Dd.Tests.DependencyGate.Tests/Altinn.Dd.Tests.DependencyGate.Tests.csproj --configuration Release --no-restore /p:Version=${VERSION}
+        dotnet build qa/Altinn.Dd.Tests.Shared.Tests/Altinn.Dd.Tests.Shared.Tests.csproj --configuration Release --no-restore /p:Version=${VERSION}
 
     - name: Run tests
       run: |
@@ -83,7 +83,8 @@ jobs:
 
   push-to-nuget:
     name: Push to nuget.org (only for tagged releases)
-    if: startsWith(github.ref, 'refs/tags/sonargate-v')
+    # A manual dispatch, even against a tag, builds the 1.0.0-preview fallback and must not publish.
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/sonargate-v')
     needs: build
     runs-on: ubuntu-latest
     permissions:
