@@ -88,4 +88,7 @@ jobs:
     - name: Push to nuget.org
       env:
         NUGET_API_KEY: ${{ steps.nuget_login.outputs.NUGET_API_KEY }}
-      run: dotnet nuget push *.${{ needs.build.outputs.version }}.nupkg --source https://api.nuget.org/v3/index.json --api-key "${NUGET_API_KEY}"
+      run: |
+        dotnet nuget push *.${VERSION}.nupkg --source https://api.nuget.org/v3/index.json --api-key "${NUGET_API_KEY}"
+        dotnet nuget push *.${VERSION}.snupkg --source https://api.nuget.org/v3/index.json --api-key "${NUGET_API_KEY}"
+      
