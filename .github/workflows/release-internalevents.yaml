@@ -56,7 +56,8 @@ jobs:
         run: dotnet pack --configuration Release --no-build /p:Version=${VERSION} -p:IncludeSymbols=true -p:SymbolPackageFormat=snupkg --output . ${PROJECT}
 
       - name: Push to nuget.org (only for tagged releases)
-        if: startsWith(github.ref, 'refs/tags/internalevents-v')
+        # A manual dispatch, even against a tag, builds the 1.0.0-preview fallback and must not publish.
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/internalevents-v')
         env:
           NUGET_ORG_API_KEY: ${{secrets.NUGET_ORG_API_KEY}}
         run: |
@@ -65,7 +66,7 @@ jobs:
           dotnet nuget push *.${VERSION}.snupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_ORG_API_KEY }} --skip-duplicate
 
       - name: Upload artifacts (for non-tagged builds)
-        if: "!startsWith(github.ref, 'refs/tags/internalevents-v')"
+        if: "!(github.event_name == 'push' && startsWith(github.ref, 'refs/tags/internalevents-v'))"
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: internalevents-package-${{ env.VERSION }}
