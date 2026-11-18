@@ -26,10 +26,10 @@ jobs:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
     - name: Restore dependencies
-      run: dotnet restore
+      run: dotnet restore oed-messaging.slnx
 
     - name: Build project
-      run: dotnet build -c Release --no-restore
+      run: dotnet build oed-messaging.slnx -c Release --no-restore
 
     # Altinn.Dd.Tests.SonarGate scans the project, archives the snapshot to the oedqa blob
     # container, and publishes the dashboard to the account's $web static-website container

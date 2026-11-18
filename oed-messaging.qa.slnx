@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Altinn.Dd.Tests.DependencyGate.Tests/Altinn.Dd.Tests.DependencyGate.Tests.csproj" />
+  <Project Path="Altinn.Dd.Tests.DependencyGate/Altinn.Dd.Tests.DependencyGate.csproj" />
+  <Project Path="Altinn.Dd.Tests.Shared.Tests/Altinn.Dd.Tests.Shared.Tests.csproj" />
+  <Project Path="Altinn.Dd.Tests.SonarGate/Altinn.Dd.Tests.SonarGate.csproj" />
+</Solution>

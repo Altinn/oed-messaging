@@ -1,0 +1,12 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="Altinn.Dd.Correspondence.Tests/Altinn.Dd.Correspondence.Tests.csproj" />
+  <Project Path="Altinn.Dd.Correspondence/Altinn.Dd.Correspondence.csproj" />
+  <Project Path="Altinn.Dd.InternalEvents/Altinn.Dd.InternalEvents.csproj" />
+  <Project Path="QaTests/QaTests.csproj" />
+  <Project Path="SendDdCorrespondence/SendDdCorrespondence.csproj" />
+</Solution>

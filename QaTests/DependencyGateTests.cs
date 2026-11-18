@@ -19,5 +19,7 @@ public class DependencyGateTests(ITestOutputHelper output)
 {
     [SkippableFact, Trait("Category", "qa")]
     public Task Dependencies_HaveNoHighOrCriticalAdvisories() =>
-        DependencyGate.RunAsync(new() { ProjectKey = "oed-messaging" }, output);
+        // The repo root holds two solutions; audit the application one. The gate packages in
+        // oed-messaging.qa.slnx are not covered by this gate.
+        DependencyGate.RunAsync(new() { ProjectKey = "oed-messaging", SolutionRelativePath = "oed-messaging.slnx" }, output);
 }
