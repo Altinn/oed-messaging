@@ -8,8 +8,8 @@ Libraries wrapping Altinn 3 correspondence, used for messaging heirs in Digitalt
 | --- | --- |
 | [`Altinn.Dd.Correspondence`](Altinn.Dd.Correspondence/README.md) | Sending, searching and retrieving Altinn 3 correspondence. |
 | [`Altinn.Dd.InternalEvents`](Altinn.Dd.InternalEvents/README.md) | Estate event types and resource ids shared across the programme. |
-| [`Altinn.Dd.Tests.SonarGate`](Altinn.Dd.Tests.SonarGate/README.md) | SonarQube quality-gate test runner shared across the programme. |
-| [`Altinn.Dd.Tests.DependencyGate`](Altinn.Dd.Tests.DependencyGate/README.md) | NuGet dependency vulnerability gate shared across the programme. |
+| [`Altinn.Dd.Tests.SonarGate`](qa/Altinn.Dd.Tests.SonarGate/README.md) | SonarQube quality-gate test runner shared across the programme. |
+| [`Altinn.Dd.Tests.DependencyGate`](qa/Altinn.Dd.Tests.DependencyGate/README.md) | NuGet dependency vulnerability gate shared across the programme. |
 
 They are published to nuget.org by the `Release Correspondence Package`,
 `Release InternalEvents Package`, `Release SonarGate Package` and
@@ -43,8 +43,8 @@ $env:QATESTS = "1"; dotnet test ./QaTests/QaTests.csproj
 
 The runners live in the `Altinn.Dd.Tests.SonarGate` and `Altinn.Dd.Tests.DependencyGate` packages;
 the test files here are just the option blobs. Their source is in this repository, in
-[`Altinn.Dd.Tests.SonarGate`](Altinn.Dd.Tests.SonarGate/README.md) and
-[`Altinn.Dd.Tests.DependencyGate`](Altinn.Dd.Tests.DependencyGate/README.md); `QaTests` still
+[`Altinn.Dd.Tests.SonarGate`](qa/Altinn.Dd.Tests.SonarGate/README.md) and
+[`Altinn.Dd.Tests.DependencyGate`](qa/Altinn.Dd.Tests.DependencyGate/README.md); `QaTests` still
 references the published packages, so a change there reaches it only after a release.
 
 ## Build-enforced conventions

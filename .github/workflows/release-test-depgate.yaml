@@ -56,21 +56,21 @@ jobs:
     - name: Restore dependencies
       run: |
         dotnet restore ${PROJECT}
-        dotnet restore Altinn.Dd.Tests.DependencyGate.Tests/Altinn.Dd.Tests.DependencyGate.Tests.csproj
-        dotnet restore Altinn.Dd.Tests.Shared.Tests/Altinn.Dd.Tests.Shared.Tests.csproj
+        dotnet restore qa/Altinn.Dd.Tests.DependencyGate.Tests/Altinn.Dd.Tests.DependencyGate.Tests.csproj
+        dotnet restore qa/Altinn.Dd.Tests.Shared.Tests/Altinn.Dd.Tests.Shared.Tests.csproj
 
     - name: Build
       run: dotnet build --configuration Release --no-restore /p:Version=${VERSION} ${PROJECT}
 
     - name: Build test projects
       run: |
-        dotnet build Altinn.Dd.Tests.DependencyGate.Tests/Altinn.Dd.Tests.DependencyGate.Tests.csproj --configuration Release --no-restore
-        dotnet build Altinn.Dd.Tests.Shared.Tests/Altinn.Dd.Tests.Shared.Tests.csproj --configuration Release --no-restore
+        dotnet build qa/Altinn.Dd.Tests.DependencyGate.Tests/Altinn.Dd.Tests.DependencyGate.Tests.csproj --configuration Release --no-restore
+        dotnet build qa/Altinn.Dd.Tests.Shared.Tests/Altinn.Dd.Tests.Shared.Tests.csproj --configuration Release --no-restore
 
     - name: Run tests
       run: |
-        dotnet test Altinn.Dd.Tests.DependencyGate.Tests/Altinn.Dd.Tests.DependencyGate.Tests.csproj --configuration Release --no-build --verbosity normal
-        dotnet test Altinn.Dd.Tests.Shared.Tests/Altinn.Dd.Tests.Shared.Tests.csproj --configuration Release --no-build --verbosity normal
+        dotnet test qa/Altinn.Dd.Tests.DependencyGate.Tests/Altinn.Dd.Tests.DependencyGate.Tests.csproj --configuration Release --no-build --verbosity normal
+        dotnet test qa/Altinn.Dd.Tests.Shared.Tests/Altinn.Dd.Tests.Shared.Tests.csproj --configuration Release --no-build --verbosity normal
 
     - name: Pack with debug symbols
       run: dotnet pack --configuration Release --no-build /p:Version=${VERSION} -p:IncludeSymbols=true -p:SymbolPackageFormat=snupkg --output . ${PROJECT}
