@@ -267,3 +267,11 @@ __pycache__/
 # these two were leaving them untracked after every nightly run.
 **/.sonarqube/
 /QaTests/history/
+
+# Carried over from dd-qa when the QA gate packages moved into this repository.
+[Ll]ogs/
+.vscode/
+*.swp
+*.snupkg
+.DS_Store
+Thumbs.db

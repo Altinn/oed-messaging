@@ -1,0 +1,57 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net10.0</TargetFrameworks>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+
+    <!-- NuGet metadata -->
+    <PackageId>Altinn.Dd.Tests.SonarGate</PackageId>
+    <!-- 2.1.0: history/ reads are scoped to this gate's own snapshots, so a sibling gate
+         writing into the same folder cannot break summary regeneration. Consumers must
+         take this before adding Altinn.Dd.Tests.DependencyGate. -->
+    <Version>2.1.0</Version>
+    <Authors>Digitaliseringsdirektoratet</Authors>
+    <Company>Digitaliseringsdirektoratet</Company>
+    <PackageTags>sonarqube;quality-gate;testcontainers;altinn;digitalt-dodsbo</PackageTags>
+    <Description>Shared SonarQube quality-gate test runner for the Digitalt Dødsbo programme.</Description>
+    <PackageProjectUrl>https://github.com/Altinn/oed-messaging</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Altinn/oed-messaging</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+  </PropertyGroup>
+
+  <!-- Shared plumbing, compiled in from Altinn.Dd.Tests.Shared rather than referenced as a package.
+       These types are internal and appear in no public API, so a package would add a
+       dependency to every consumer and a public contract to maintain, for code no
+       consumer can call. Internal means each gate gets its own copy with no clash for
+       consumers that reference both. -->
+  <ItemGroup>
+    <Compile Include="..\Altinn.Dd.Tests.Shared\*.cs" LinkBase="Shared" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Identity" Version="1.13.0" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.22.2" />
+    <PackageReference Include="Testcontainers" Version="4.14.0" />
+    <PackageReference Include="xunit.abstractions" Version="2.0.3" />
+    <PackageReference Include="Xunit.SkippableFact" Version="1.4.13" />
+  </ItemGroup>
+
+  <!-- HistoryWriter's snapshot filtering is covered by the DependencyGate test project: the two
+       gates share the history folder, so that filtering is a cross-gate contract. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Altinn.Dd.Tests.DependencyGate.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,15 @@
+# Default: auto-detect text files, normalize to LF in the repo, check out
+# with platform-native line endings (configurable per-clone via core.autocrlf).
+* text=auto eol=lf
+
+# Workflow + shell files must stay LF for Linux CI runners.
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sh text eol=lf
+
+# Binary files — don't touch.
+*.png binary
+*.jpg binary
+*.ico binary
+*.nupkg binary
+*.snupkg binary
