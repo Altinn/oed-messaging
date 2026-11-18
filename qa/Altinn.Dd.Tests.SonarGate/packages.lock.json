@@ -233,12 +233,6 @@
         "dependencies": {
           "xunit.extensibility.core": "[2.4.0]"
         }
-      },
-      "altinn.dd.tests.common": {
-        "type": "Project",
-        "dependencies": {
-          "xunit.abstractions": "[2.0.3, )"
-        }
       }
     }
   }
