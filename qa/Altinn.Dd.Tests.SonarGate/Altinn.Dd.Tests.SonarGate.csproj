@@ -5,6 +5,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
+    <!-- The gates' public surface is documented where it matters to consumers; the remaining
+         members (exception constructors, enum values) are self-explanatory. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
 
     <!-- NuGet metadata -->
     <PackageId>Altinn.Dd.Tests.SonarGate</PackageId>
