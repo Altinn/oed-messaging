@@ -4,21 +4,39 @@ using Xunit.Abstractions;
 
 namespace QaTests;
 
-// Opt-in SonarQube quality-gate test for oed-messaging. The actual runner lives in the
-// Altinn.Dd.Tests.SonarGate package — this file is just the option blob. See
-// https://altinn.studio/repos/digdir/dd-qa for the package source.
+// Opt-in SonarQube quality-gate tests for oed-messaging. The actual runner lives in the
+// Altinn.Dd.Tests.SonarGate package — this file is just the option blobs. The package source is
+// in qa/Altinn.Dd.Tests.SonarGate in this repository.
 //
-// Scope: Altinn.Dd.Correspondence (the library this repo publishes). The Altinn.Dd.InternalEvents
-// library in the same repo isn't scanned by this run — add a separate SonarGate test with its own
-// ProjectKey if you want it on the dashboard.
+// Two scans, each with its own SonarQube container and ProjectKey:
+// - RootProjects: everything in oed-messaging.slnx except qa/ and QaTests/. Coverage comes from
+//   Altinn.Dd.Correspondence.Tests. It must not come from oed-messaging.slnx, which contains this
+//   project: `dotnet test` on it would start these QA tests again from inside their own run.
+// - QaProjects: qa/oed-qa.slnx, the gate packages and their tests, which also supply coverage.
 //
 // Run with:  $env:QATESTS = "1"; dotnet test ./QaTests/QaTests.csproj
 public class SonarGateTests(ITestOutputHelper output)
 {
+    // SonarGateOptions' default exclusions, which an override replaces rather than extends.
+    private const string DefaultExclusions =
+        "**/*.js,**/*.jsx,**/*.ts,**/*.tsx,**/*.css,**/*.scss,**/*.html," +
+        "**/wwwroot/**,**/node_modules/**," +
+        "**/views/Home/Index.cshtml";
+
     [SkippableFact, Trait("Category", "qa")]
-    public Task QualityGate_ReturnsOk() => SonarGate.RunAsync(new()
+    public Task RootProjects_QualityGate_ReturnsOk() => SonarGate.RunAsync(new()
     {
         ProjectKey = "oed-messaging",
-        ScanCsprojRelativePath = "Altinn.Dd.Correspondence/Altinn.Dd.Correspondence.csproj",
+        ScanCsprojRelativePath = "oed-messaging.slnx",
+        SonarExclusions = DefaultExclusions + ",**/qa/**,**/QaTests/**",
+        Coverage = new() { TestCsprojRelativePath = "Altinn.Dd.Correspondence.Tests/Altinn.Dd.Correspondence.Tests.csproj" },
+    }, output);
+
+    [SkippableFact, Trait("Category", "qa")]
+    public Task QaProjects_QualityGate_ReturnsOk() => SonarGate.RunAsync(new()
+    {
+        ProjectKey = "oed-qa",
+        ScanCsprojRelativePath = "qa/oed-qa.slnx",
+        Coverage = new() { TestCsprojRelativePath = "qa/oed-qa.slnx" },
     }, output);
 }
