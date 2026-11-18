@@ -2,6 +2,12 @@
   "version": 1,
   "dependencies": {
     "net10.0": {
+      "coverlet.collector": {
+        "type": "Direct",
+        "requested": "[10.1.0, )",
+        "resolved": "10.1.0",
+        "contentHash": "SlYCIHnBYxINSUpR75SiM5JEmnx11pqT+Ac/C/fUqTTA0dLPl9eYzmFXKKuxmQhL3ZdTQl4PBD3YdAxAauaKLQ=="
+      },
       "Microsoft.NET.Test.Sdk": {
         "type": "Direct",
         "requested": "[18.0.1, )",
@@ -299,16 +305,9 @@
           "xunit.extensibility.execution": "2.4.0"
         }
       },
-      "altinn.dd.tests.common": {
-        "type": "Project",
-        "dependencies": {
-          "xunit.abstractions": "[2.0.3, )"
-        }
-      },
       "altinn.dd.tests.dependencygate": {
         "type": "Project",
         "dependencies": {
-          "Altinn.Dd.Tests.Common": "[1.0.0, )",
           "Xunit.SkippableFact": "[1.4.13, )",
           "xunit.abstractions": "[2.0.3, )"
         }
@@ -316,7 +315,6 @@
       "altinn.dd.tests.sonargate": {
         "type": "Project",
         "dependencies": {
-          "Altinn.Dd.Tests.Common": "[1.0.0, )",
           "Azure.Identity": "[1.13.0, )",
           "Azure.Storage.Blobs": "[12.22.2, )",
           "Testcontainers": "[4.14.0, )",

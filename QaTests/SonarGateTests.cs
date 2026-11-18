@@ -29,7 +29,13 @@ public class SonarGateTests(ITestOutputHelper output)
         ProjectKey = "oed-messaging",
         ScanCsprojRelativePath = "oed-messaging.slnx",
         SonarExclusions = DefaultExclusions + ",**/qa/**,**/QaTests/**",
-        Coverage = new() { TestCsprojRelativePath = "Altinn.Dd.Correspondence.Tests/Altinn.Dd.Correspondence.Tests.csproj" },
+        Coverage = new()
+        {
+            TestCsprojRelativePath = "Altinn.Dd.Correspondence.Tests/Altinn.Dd.Correspondence.Tests.csproj",
+            // The scan target is a solution at the repo root, which contributes no folder to the
+            // default cache key, so name the production project explicitly.
+            CoverageInputRoots = ["Altinn.Dd.Correspondence", "Altinn.Dd.Correspondence.Tests"],
+        },
     }, output);
 
     [SkippableFact, Trait("Category", "qa")]
