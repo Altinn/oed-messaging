@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "xunit.abstractions": {
+        "type": "Direct",
+        "requested": "[2.0.3, )",
+        "resolved": "2.0.3",
+        "contentHash": "pot1I4YOxlWjIb5jmwvvQNbTrZ3lJQ+jUGkGjWE3hEFM0l5gOnBWS+H3qsex68s5cO52g+44vpGzhAt+42vwKg=="
+      },
+      "Xunit.SkippableFact": {
+        "type": "Direct",
+        "requested": "[1.4.13, )",
+        "resolved": "1.4.13",
+        "contentHash": "IyzZNvJEtXGlXrzxDiSbtH5Lyxf4iJdRQADuyjGdDf00LjXRLJwIoezQNFhFGKTMtvk8IIgaSHxW4mAV4O7b8A==",
+        "dependencies": {
+          "Validation": "2.4.18",
+          "xunit.extensibility.execution": "2.4.0"
+        }
+      },
+      "Validation": {
+        "type": "Transitive",
+        "resolved": "2.4.18",
+        "contentHash": "NfvWJ1QeuZ1FQCkqgXTu1cOkRkbNCfxs4Tat+abXLwom6OXbULVhRGp34BTvVB4XPxj6VIAl7KfLfStXMt/Ehw=="
+      },
+      "xunit.extensibility.core": {
+        "type": "Transitive",
+        "resolved": "2.4.0",
+        "contentHash": "qr/KrR6uukHXD9e/lLQjyCPfMEDuvvhNFDzsYzCF2kKlYKiqcADfUvA9Q68rBtKFtwHFeghjWEuv15KoGD2SfA==",
+        "dependencies": {
+          "xunit.abstractions": "2.0.2"
+        }
+      },
+      "xunit.extensibility.execution": {
+        "type": "Transitive",
+        "resolved": "2.4.0",
+        "contentHash": "252Dzn7i5bMPKtAL15aOP3qJhxKd+57I8ldwIQRJa745JxQuiBu5Da0vtIISVTtc3buRSkBwVnD9iUzsEmCzZA==",
+        "dependencies": {
+          "xunit.extensibility.core": "[2.4.0]"
+        }
+      }
+    }
+  }
+}

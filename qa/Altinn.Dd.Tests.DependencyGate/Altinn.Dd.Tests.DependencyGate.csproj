@@ -1,0 +1,75 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net10.0</TargetFrameworks>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <!-- The gates' public surface is documented where it matters to consumers; the remaining
+         members (exception constructors, enum values) are self-explanatory. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <RootNamespace>Altinn.Dd.Tests.DependencyGate</RootNamespace>
+
+    <!-- NuGet metadata -->
+    <PackageId>Altinn.Dd.Tests.DependencyGate</PackageId>
+    <!-- 1.0.1: judge the audit on whether a JSON report came back, not on the exit
+         code. `dotnet list` exits non-zero when any project is unevaluable while
+         still reporting fully on the rest, which silently skipped the audit in the
+         two repos wrapping an npm client in an .esproj. -->
+    <!-- 1.0.2: 1.0.1 was pushed but never became available on nuget.org - accepted and
+         then lost, after which retries were swallowed by the skip-duplicate flag. Same code,
+         new version, so there is something to publish. -->
+    <!-- 1.0.3: disable MSBuild node reuse for subprocesses - a reused node held the output
+         pipe open, so every run waited out the 10-minute timeout and skipped. Also accept the
+         SDK 11 wording for an .esproj ("is not a PackageReference project"). -->
+    <Version>1.0.3</Version>
+    <Authors>Digitaliseringsdirektoratet</Authors>
+    <Company>Digitaliseringsdirektoratet</Company>
+    <PackageTags>nuget;vulnerability;dependencies;quality-gate;altinn;digitalt-dodsbo</PackageTags>
+    <Description>Shared dependency vulnerability gate for the Digitalt Dødsbo programme. Audits every project in the consuming repository and fails on high or critical NuGet advisories.</Description>
+    <PackageProjectUrl>https://github.com/Altinn/oed-messaging</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Altinn/oed-messaging</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+  </PropertyGroup>
+
+  <!--
+    Deliberately minimal: xunit.abstractions for ITestOutputHelper and SkippableFact for Skip.*,
+    and nothing else. This package exists to report dependency risk, so its own footprint is part
+    of the product - it must be safe to add to a repo that wants auditing but not SonarQube.
+
+    Concretely: Altinn.Dd.Tests.SonarGate pulls 31 transitive packages, 13 of them the
+    Testcontainers/Docker subtree (which is how a high-severity SSH.NET advisory reached eight
+    repositories in August 2026). These two references pull 5 in total. Blob archiving is done with
+    HttpClient against a SAS URL rather than Azure.Storage.Blobs + Azure.Identity, which would add
+    12 more for one PUT.
+  -->
+  <ItemGroup>
+    <PackageReference Include="xunit.abstractions" Version="2.0.3" />
+    <PackageReference Include="Xunit.SkippableFact" Version="1.4.13" />
+  </ItemGroup>
+
+  <!-- Shared plumbing, compiled in from Altinn.Dd.Tests.Shared rather than referenced as a package.
+       These types are internal and appear in no public API, so a package would add a
+       dependency to every consumer and a public contract to maintain, for code no
+       consumer can call. Internal means each gate gets its own copy with no clash for
+       consumers that reference both. -->
+  <ItemGroup>
+    <Compile Include="..\Altinn.Dd.Tests.Shared\*.cs" LinkBase="Shared" />
+  </ItemGroup>
+
+  <!-- The parser and threshold logic are internal; the test project needs to reach them. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Altinn.Dd.Tests.DependencyGate.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

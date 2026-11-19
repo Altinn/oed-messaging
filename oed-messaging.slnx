@@ -1,0 +1,18 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/qa/">
+    <Project Path="qa/Altinn.Dd.Tests.DependencyGate.Tests/Altinn.Dd.Tests.DependencyGate.Tests.csproj" />
+    <Project Path="qa/Altinn.Dd.Tests.DependencyGate/Altinn.Dd.Tests.DependencyGate.csproj" />
+    <Project Path="qa/Altinn.Dd.Tests.Shared.Tests/Altinn.Dd.Tests.Shared.Tests.csproj" />
+    <Project Path="qa/Altinn.Dd.Tests.SonarGate/Altinn.Dd.Tests.SonarGate.csproj" />
+  </Folder>
+  <Project Path="Altinn.Dd.Correspondence.Tests/Altinn.Dd.Correspondence.Tests.csproj" />
+  <Project Path="Altinn.Dd.Correspondence/Altinn.Dd.Correspondence.csproj" />
+  <Project Path="Altinn.Dd.InternalEvents/Altinn.Dd.InternalEvents.csproj" />
+  <Project Path="QaTests/QaTests.csproj" />
+  <Project Path="SendDdCorrespondence/SendDdCorrespondence.csproj" />
+</Solution>

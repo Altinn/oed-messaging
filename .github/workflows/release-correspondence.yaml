@@ -59,7 +59,7 @@ jobs:
       run: dotnet build --configuration Release --no-restore /p:Version=${VERSION} ${PROJECT}
       
     - name: Build test project
-      run: dotnet build Altinn.Dd.Correspondence.Tests/Altinn.Dd.Correspondence.Tests.csproj --configuration Release --no-restore
+      run: dotnet build Altinn.Dd.Correspondence.Tests/Altinn.Dd.Correspondence.Tests.csproj --configuration Release --no-restore /p:Version=${VERSION}
       
     - name: Run tests
       run: dotnet test Altinn.Dd.Correspondence.Tests/Altinn.Dd.Correspondence.Tests.csproj --configuration Release --no-build --verbosity normal
@@ -75,7 +75,8 @@ jobs:
 
   push-to-nuget:
     name: Push to nuget.org (only for tagged releases)
-    if: startsWith(github.ref, 'refs/tags/correspondence-v')
+    # A manual dispatch, even against a tag, builds the 1.0.0-preview fallback and must not publish.
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/correspondence-v')
     needs: build
     runs-on: ubuntu-latest
     permissions:
