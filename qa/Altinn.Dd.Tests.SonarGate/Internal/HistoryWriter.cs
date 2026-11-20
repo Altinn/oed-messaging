@@ -63,10 +63,19 @@ internal sealed class HistoryWriter
     public void RegenerateSummary()
     {
         var rows = new List<(DateTime Ts, string Status, Dictionary<string, string> Metrics)>();
+        string? latestFile = null;
         foreach (var file in HistoryFolder.Snapshots(_historyDir, SnapshotNamePattern))
         {
             using var doc = JsonDocument.Parse(File.ReadAllText(file));
             var root = doc.RootElement;
+            // A repo can run more than one scan (oed-messaging runs two), and every scan writes
+            // into the same history folder with the same file-name pattern. Without this check
+            // each project's summary lists the other project's runs as well.
+            if (!string.Equals(Json.GetStringOrEmpty(root, "projectKey"), _projectKey, StringComparison.Ordinal))
+                continue;
+            // Names are timestamps, so ordinal name order is chronological order.
+            if (latestFile is null || string.CompareOrdinal(Path.GetFileName(file), Path.GetFileName(latestFile)) > 0)
+                latestFile = file;
             var ts = DateTime.Parse(
                 root.GetProperty("timestamp").GetString()!,
                 CultureInfo.InvariantCulture,
@@ -102,7 +111,7 @@ internal sealed class HistoryWriter
               .AppendLine(" |");
         }
 
-        AppendLatestRunDetails(sb);
+        AppendLatestRunDetails(sb, latestFile);
 
         File.WriteAllText(Path.Combine(_historyDir, "summary.md"), sb.ToString());
 
@@ -117,9 +126,8 @@ internal sealed class HistoryWriter
 
     // Renders the top-N findings from the most recent snapshot only. Older snapshots still carry
     // their own `top` block in JSON, but listing them all in markdown would defeat the size cap.
-    private void AppendLatestRunDetails(StringBuilder sb)
+    private static void AppendLatestRunDetails(StringBuilder sb, string? latestFile)
     {
-        var latestFile = HistoryFolder.Newest(_historyDir, SnapshotNamePattern);
         if (latestFile is null) return;
 
         using var doc = JsonDocument.Parse(File.ReadAllText(latestFile));

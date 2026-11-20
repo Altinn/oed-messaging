@@ -84,6 +84,30 @@ public class HistoryFolderSharingTests : IDisposable
     }
 
     [Fact]
+    public void SonarSummary_ListsOnlyItsOwnProject()
+    {
+        // oed-messaging runs two scans into the same history folder. The other project's run is
+        // newer, so without the project filter it would also take over the details section.
+        WriteSonarSnapshot("20260101-120000.json");
+        File.WriteAllText(
+            Path.Combine(_dir, "20260102-120000.json"),
+            SonarSnapshot
+                .Replace("\"oed-app\"", "\"oed-qa\"", StringComparison.Ordinal)
+                .Replace("2026-01-01T12", "2026-01-02T12", StringComparison.Ordinal)
+                .Replace("4200", "9900", StringComparison.Ordinal)
+                .Replace("Add a private constructor.", "Other project finding.", StringComparison.Ordinal));
+
+        new SonarHistoryWriter(_dir, "oed-app").RegenerateSummary();
+
+        var summary = File.ReadAllText(Path.Combine(_dir, "summary.md"));
+        Assert.Contains("4200", summary, StringComparison.Ordinal);
+        Assert.DoesNotContain("2026-01-02 12:00:00", summary, StringComparison.Ordinal);
+        Assert.DoesNotContain("9900", summary, StringComparison.Ordinal);
+        Assert.Contains("Add a private constructor.", summary, StringComparison.Ordinal);
+        Assert.DoesNotContain("Other project finding.", summary, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void SonarSummary_StillRendersLatestRunDetails()
     {
         WriteSonarSnapshot("20260101-120000.json");
