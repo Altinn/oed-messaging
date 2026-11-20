@@ -82,48 +82,70 @@ internal sealed class CoverageCollector
     /// <summary>The absolute folders whose sources make up the cache key.</summary>
     internal IReadOnlyList<string> InputRoots => _inputRoots;
 
-    public async Task<string> CollectAsync(bool forceRebuild)
+    public async Task<IReadOnlyList<string>> CollectAsync(bool forceRebuild)
     {
         // Coverage runs BEFORE the scanner window — we don't want the test project's compilation to
         // be analyzed (only the scan target is in scope), and producing the report up front lets us
-        // point the scanner at a file that already exists. Output lives under TestResults/<guid>/
-        // which the standard `[Tt]est[Rr]esult*/` gitignore covers.
+        // point the scanner at a file that already exists. Output lives under TestResults/ which
+        // the standard `[Tt]est[Rr]esult*/` gitignore covers.
         //
         // Cached on a content hash so subsequent runs reuse the prior report. Content hashing (not
         // mtime) handles auto-generated source files whose mtime updates on every build but whose
         // content rarely changes. Override with QATESTS_COVERAGE=force.
+        //
+        // Each cache key gets its own results folder. A solution target runs several test
+        // projects, each writing its own coverage.opencover.xml under a GUID folder, and every one
+        // of them belongs in the scan. A folder of its own also keeps another SonarGate test in
+        // the same QaTests project, or an older run, from contributing a report that is not ours.
         var coverageDir = Path.Combine(_qaTestsDir, "TestResults");
         Directory.CreateDirectory(coverageDir);
 
         var cacheKey = ComputeCacheKey();
         _logger.Log($"Coverage cache key: {cacheKey}");
+        var runDir = Path.Combine(coverageDir, "coverage", cacheKey);
+        var cacheKeyFile = Path.Combine(runDir, "cache-key.txt");
 
-        var coverageFile = forceRebuild ? null : FindCachedCoverageFile(coverageDir, cacheKey);
-        if (coverageFile is not null)
+        if (!forceRebuild && File.Exists(cacheKeyFile))
         {
-            _logger.Log($"Reusing cached coverage report: {coverageFile} (set QATESTS_COVERAGE=force to rebuild)");
-            return coverageFile;
+            var cached = FindReports(runDir);
+            if (cached.Count > 0)
+            {
+                _logger.Log(
+                    $"Reusing {cached.Count} cached coverage report(s) in {runDir} "
+                    + "(set QATESTS_COVERAGE=force to rebuild)");
+                return cached;
+            }
         }
+
+        // Start clean so a forced or interrupted earlier run cannot leave extra reports behind.
+        if (Directory.Exists(runDir)) Directory.Delete(runDir, recursive: true);
+        Directory.CreateDirectory(runDir);
 
         var runsettingsPath = ResolveOrGenerateRunsettings(coverageDir);
 
-        _logger.Log($"Collecting OpenCover coverage from test project into {coverageDir}…");
+        _logger.Log($"Collecting OpenCover coverage into {runDir}…");
         await _process.RunAsync(
             "dotnet",
-            $"test \"{_testCsprojAbsolute}\" --collect:\"XPlat Code Coverage\" --settings \"{runsettingsPath}\" --results-directory \"{coverageDir}\"",
+            $"test \"{_testCsprojAbsolute}\" --collect:\"XPlat Code Coverage\" --settings \"{runsettingsPath}\" --results-directory \"{runDir}\"",
             _repoRoot);
 
-        coverageFile = Directory
-            .EnumerateFiles(coverageDir, "coverage.opencover.xml", SearchOption.AllDirectories)
-            .OrderByDescending(File.GetLastWriteTimeUtc)
-            .FirstOrDefault()
-            ?? throw new SonarGateException(
-                $"Coverlet did not produce a coverage.opencover.xml under {coverageDir}.");
+        var reports = FindReports(runDir);
+        if (reports.Count == 0)
+            throw new SonarGateException(
+                $"Coverlet did not produce a coverage.opencover.xml under {runDir}.");
 
-        File.WriteAllText(Path.Combine(Path.GetDirectoryName(coverageFile)!, "cache-key.txt"), cacheKey);
-        _logger.Log($"Coverage report: {coverageFile}");
-        return coverageFile;
+        // Written last: its presence marks a complete set of reports for this key.
+        File.WriteAllText(cacheKeyFile, cacheKey);
+        foreach (var report in reports)
+            _logger.Log($"Coverage report: {report}");
+        return reports;
     }
+
+    private static List<string> FindReports(string runDir)
+        => Directory
+            .EnumerateFiles(runDir, "coverage.opencover.xml", SearchOption.AllDirectories)
+            .OrderBy(f => f, StringComparer.Ordinal)
+            .ToList();
 
     // Returns the path of the runsettings file `dotnet test` should consume. When the consumer
     // supplied an explicit path, that file is used verbatim; otherwise we materialize a transient
@@ -198,20 +220,6 @@ internal sealed class CoverageCollector
 
         sha.TransformFinalBlock([], 0, 0);
         return Convert.ToHexString(sha.Hash!);
-    }
-
-    private static string? FindCachedCoverageFile(string coverageDir, string cacheKey)
-    {
-        if (!Directory.Exists(coverageDir)) return null;
-        foreach (var subdir in Directory.EnumerateDirectories(coverageDir))
-        {
-            var cacheKeyFile = Path.Combine(subdir, "cache-key.txt");
-            var coverageFile = Path.Combine(subdir, "coverage.opencover.xml");
-            if (!File.Exists(cacheKeyFile) || !File.Exists(coverageFile)) continue;
-            if (string.Equals(File.ReadAllText(cacheKeyFile).Trim(), cacheKey, StringComparison.OrdinalIgnoreCase))
-                return coverageFile;
-        }
-        return null;
     }
 
     private static IEnumerable<string> EnumerateCoverageInputs(string root)

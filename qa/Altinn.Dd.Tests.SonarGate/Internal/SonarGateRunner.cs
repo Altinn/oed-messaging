@@ -92,7 +92,7 @@ internal sealed class SonarGateRunner
 
         // Optional coverage step runs BEFORE the scanner window so the report exists when we pass
         // its path to `sonarscanner begin`, and so the test project's compilation isn't analyzed.
-        string? coverageFile = null;
+        IReadOnlyList<string> coverageReports = [];
         if (_options.Coverage is not null)
         {
             var forceCoverage = string.Equals(
@@ -100,7 +100,7 @@ internal sealed class SonarGateRunner
                 "force",
                 StringComparison.OrdinalIgnoreCase);
             var collector = new CoverageCollector(_options, repoRoot, qaTestsDir, _logger, _process);
-            coverageFile = await collector.CollectAsync(forceCoverage);
+            coverageReports = await collector.CollectAsync(forceCoverage);
         }
 
         _logger.Log("Beginning Sonar scan…");
@@ -113,8 +113,9 @@ internal sealed class SonarGateRunner
         beginArgs.Append($" /k:\"{_options.ProjectKey}\"")
             .Append($" /d:sonar.host.url={sonarHostUrl}")
             .Append($" /d:sonar.login=admin /d:sonar.password={AdminPassword}");
-        if (coverageFile is not null)
-            beginArgs.Append($" /d:sonar.cs.opencover.reportsPaths=\"{coverageFile}\"");
+        // Comma-separated: a solution target yields one report per test project.
+        if (coverageReports.Count > 0)
+            beginArgs.Append($" /d:sonar.cs.opencover.reportsPaths=\"{string.Join(",", coverageReports)}\"");
         beginArgs.Append($" /d:sonar.exclusions=\"{_options.SonarExclusions}\"")
             .Append(" /d:sonar.scanner.scanAll=false");
 
