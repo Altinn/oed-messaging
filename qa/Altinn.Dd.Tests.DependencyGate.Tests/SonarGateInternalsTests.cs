@@ -109,17 +109,25 @@ public class SonarGateInternalsTests : IDisposable
             StringComparison.Ordinal);
 
     [Fact]
-    public void Database_IsStoredBesideTheHistory_PerImage()
+    public void Database_LatestCopyIsStoredBesideTheHistory_PerImage()
         => Assert.Equal(
-            "oed-app/sonar-db/sonarqube_10.6.0-community",
-            SonarDatabaseStore.Prefix("oed-app", "sonarqube:10.6.0-community"));
+            "oed-app/sonar-db/sonarqube_10.6.0-community/sonar.mv.db.gz",
+            SonarDatabaseStore.LatestBlob("oed-app", "sonarqube:10.6.0-community"));
+
+    [Fact]
+    public void Database_BackupsShareOneTopLevelFolder_PerProjectAndImage()
+        // One lifecycle rule on "sonar-db-backups/" expires every project's backups, and cannot
+        // match a latest copy.
+        => Assert.Equal(
+            "sonar-db-backups/oed-app/sonarqube_10.6.0-community",
+            SonarDatabaseStore.BackupPrefix("oed-app", "sonarqube:10.6.0-community"));
 
     [Fact]
     public void Database_BackupIsNamedByTimeAndCommit()
         => Assert.Equal(
-            "p/backups/20260102-030405-abc1234.mv.db.gz",
+            "b/20260102-030405-abc1234.mv.db.gz",
             SonarDatabaseStore.BackupName(
-                "p", new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Utc), "abc1234def5678"));
+                "b", new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Utc), "abc1234def5678"));
 
     [Fact]
     public void Database_TriesTheLatestCopyThenOlderBackups()

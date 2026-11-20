@@ -17,11 +17,14 @@ namespace Altinn.Dd.Tests.SonarGate.Internal;
 /// that earlier analysis; the scanner's project version is the commit SHA, so "new code" means
 /// everything since that run.
 ///
-/// Blob layout, beside the run history under <c>{ProjectKey}/</c>:
+/// Blob layout:
 /// <list type="bullet">
-///   <item><c>sonar-db/{image}/sonar.mv.db.gz</c> — the database of the latest successful run.</item>
-///   <item><c>sonar-db/{image}/backups/yyyyMMdd-HHmmss-{sha7}.mv.db.gz</c> — one per successful run,
-///   so a damaged database can be replaced by an older one.</item>
+///   <item><c>{ProjectKey}/sonar-db/{image}/sonar.mv.db.gz</c> — the database of the latest
+///   successful run, beside the run history.</item>
+///   <item><c>sonar-db-backups/{ProjectKey}/{image}/yyyyMMdd-HHmmss-{sha7}.mv.db.gz</c> — one per
+///   successful run, so a damaged database can be replaced by an older one. All projects' backups
+///   share one top-level folder so a single lifecycle rule (prefix <c>sonar-db-backups/</c>) can
+///   expire them without listing projects, and cannot match a latest copy by mistake.</item>
 /// </list>
 /// Keyed by image because a database written by one SonarQube version needs a migration before
 /// another version can open it, and an older version cannot open it at all. A new image therefore
@@ -42,7 +45,7 @@ internal sealed class SonarDatabaseStore
     public const uint SonarQubeUserId = 1000;
 
     internal const string LatestName = "sonar.mv.db.gz";
-    internal const string BackupFolder = "backups";
+    internal const string BackupRoot = "sonar-db-backups";
     internal const string CommitShaMetadata = "commitSha";
 
     /// <summary>
@@ -52,7 +55,8 @@ internal sealed class SonarDatabaseStore
     internal const int BackupsToTry = 2;
 
     private readonly BlobContainerClient _container;
-    private readonly string _prefix;
+    private readonly string _latestBlob;
+    private readonly string _backupPrefix;
     private readonly string _workDir;
     private readonly Logger _logger;
 
@@ -63,19 +67,26 @@ internal sealed class SonarDatabaseStore
         string workDir,
         Logger logger)
     {
-        _prefix = Prefix(projectKey, sonarQubeImage);
+        _latestBlob = LatestBlob(projectKey, sonarQubeImage);
+        _backupPrefix = BackupPrefix(projectKey, sonarQubeImage);
         _container = container;
         _workDir = workDir;
         _logger = logger;
     }
 
-    internal static string Prefix(string projectKey, string sonarQubeImage)
-        => $"{projectKey}/sonar-db/{Regex.Replace(sonarQubeImage, "[^A-Za-z0-9._-]", "_")}";
+    internal static string LatestBlob(string projectKey, string sonarQubeImage)
+        => $"{projectKey}/sonar-db/{ImageFolder(sonarQubeImage)}/{LatestName}";
 
-    internal static string BackupName(string prefix, DateTime utc, string commitSha)
-        => $"{prefix}/{BackupFolder}/"
+    internal static string BackupPrefix(string projectKey, string sonarQubeImage)
+        => $"{BackupRoot}/{projectKey}/{ImageFolder(sonarQubeImage)}";
+
+    internal static string BackupName(string backupPrefix, DateTime utc, string commitSha)
+        => $"{backupPrefix}/"
            + $"{utc.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)}-{commitSha[..Math.Min(7, commitSha.Length)]}"
            + ".mv.db.gz";
+
+    private static string ImageFolder(string sonarQubeImage)
+        => Regex.Replace(sonarQubeImage, "[^A-Za-z0-9._-]", "_");
 
     /// <summary>
     /// The databases to try, best first. Empty when there are none or the store can't be read, in
@@ -87,22 +98,20 @@ internal sealed class SonarDatabaseStore
         {
             string? latestSha = null;
             var hasLatest = false;
+            await foreach (var item in _container.GetBlobsAsync(
+                               traits: BlobTraits.Metadata, prefix: _latestBlob))
+            {
+                if (item.Name != _latestBlob) continue;
+                hasLatest = true;
+                latestSha = item.Metadata.TryGetValue(CommitShaMetadata, out var sha) ? sha : null;
+            }
+
             var backups = new List<(string Name, string? CommitSha)>();
             await foreach (var item in _container.GetBlobsAsync(
-                               traits: BlobTraits.Metadata, prefix: $"{_prefix}/"))
-            {
-                item.Metadata.TryGetValue(CommitShaMetadata, out var sha);
-                if (item.Name == $"{_prefix}/{LatestName}")
-                {
-                    hasLatest = true;
-                    latestSha = sha;
-                }
-                else if (item.Name.StartsWith($"{_prefix}/{BackupFolder}/", StringComparison.Ordinal))
-                {
-                    backups.Add((item.Name, sha));
-                }
-            }
-            return OrderCandidates(hasLatest ? $"{_prefix}/{LatestName}" : null, latestSha, backups);
+                               traits: BlobTraits.Metadata, prefix: $"{_backupPrefix}/"))
+                backups.Add((item.Name, item.Metadata.TryGetValue(CommitShaMetadata, out var sha) ? sha : null));
+
+            return OrderCandidates(hasLatest ? _latestBlob : null, latestSha, backups);
         }
         catch (Exception ex)
         {
@@ -156,9 +165,9 @@ internal sealed class SonarDatabaseStore
                 await zip.WriteAsync(database);
 
             // Backup first: the latest copy must never be a database that has no backup.
-            var backup = BackupName(_prefix, DateTime.UtcNow, commitSha);
+            var backup = BackupName(_backupPrefix, DateTime.UtcNow, commitSha);
             await UploadAsync(backup, packed, commitSha, overwrite: false);
-            await UploadAsync($"{_prefix}/{LatestName}", packed, commitSha, overwrite: true);
+            await UploadAsync(_latestBlob, packed, commitSha, overwrite: true);
 
             _logger.Log(
                 $"Saved SonarQube database ({new FileInfo(packed).Length / (1024 * 1024)} MB packed) "

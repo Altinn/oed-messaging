@@ -88,12 +88,17 @@ are still measured and archived; they just do not fail the gate.
 The quality gate only checks new code, and a fresh container has no
 earlier analysis to compare with, so on its own every run would pass whatever it found. With
 `KeepSonarDatabase` (on by default) the package therefore keeps SonarQube's database in the same
-container, beside the history:
+container:
 
-| Blob                                                         | Written                         |
-|--------------------------------------------------------------|---------------------------------|
-| `{ProjectKey}/sonar-db/{image}/sonar.mv.db.gz`               | after every run whose gate passed, replacing the previous one |
-| `{ProjectKey}/sonar-db/{image}/backups/{time}-{sha7}.mv.db.gz` | after every run whose gate passed, never replaced |
+| Blob                                                            | Written                         |
+|-----------------------------------------------------------------|---------------------------------|
+| `{ProjectKey}/sonar-db/{image}/sonar.mv.db.gz`                  | after every run whose gate passed, replacing the previous one |
+| `sonar-db-backups/{ProjectKey}/{image}/{time}-{sha7}.mv.db.gz`  | after every run whose gate passed, never replaced |
+
+The latest copy sits beside the history. Every project's backups share the top-level
+`sonar-db-backups/` folder, so one lifecycle rule on the prefix `reports/sonar-db-backups/` expires
+them all without listing projects or images, and it cannot match a latest copy. The package never
+deletes backups itself; that rule belongs with the storage account, in dd-infrastructure.
 
 A run restores the latest copy, scans with the commit SHA as the project version, and so checks
 everything since the last successful run. If a copy cannot be downloaded, does not start, or lacks
