@@ -61,13 +61,16 @@ public class SonarGateInternalsTests : IDisposable
     }
 
     [Fact]
-    public void Coverage_AcceptsAScanTargetAtTheRepoRoot()
+    public void Coverage_KeysOnTheRepoRootWhenTheScanTargetSitsThere()
     {
-        // Path.GetDirectoryName("App.slnx") is "", which used to drop the repo root from the
-        // default cache key. It now maps to the repo root, which exists, so this must not throw.
+        // Path.GetDirectoryName("App.slnx") is "", which used to drop out of the default cache
+        // key, so edits to that project's sources reused a stale coverage report.
         Directory.CreateDirectory(Path.Combine(_repo, "App.Tests"));
 
-        NewCollector(Options());
+        var roots = NewCollector(Options()).InputRoots;
+
+        Assert.Contains(Path.GetFullPath(_repo), roots);
+        Assert.Contains(Path.GetFullPath(Path.Combine(_repo, "App.Tests")), roots);
     }
 
     private CoverageCollector NewCollector(SonarGateOptions options)

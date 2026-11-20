@@ -79,6 +79,9 @@ internal sealed class CoverageCollector
             => Path.GetDirectoryName(relativePath) is { Length: > 0 } dir ? dir : ".";
     }
 
+    /// <summary>The absolute folders whose sources make up the cache key.</summary>
+    internal IReadOnlyList<string> InputRoots => _inputRoots;
+
     public async Task<string> CollectAsync(bool forceRebuild)
     {
         // Coverage runs BEFORE the scanner window — we don't want the test project's compilation to
