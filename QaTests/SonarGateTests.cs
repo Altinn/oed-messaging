@@ -29,6 +29,9 @@ public class SonarGateTests(ITestOutputHelper output)
         ProjectKey = "oed-messaging",
         ScanCsprojRelativePath = "oed-messaging.slnx",
         SonarExclusions = DefaultExclusions + ",**/qa/**,**/QaTests/**",
+        // The test projects under qa/, and QaTests itself, are test code, which SonarExclusions
+        // does not reach.
+        SonarTestExclusions = "**/qa/**,**/QaTests/**",
         Coverage = new()
         {
             TestCsprojRelativePath = "Altinn.Dd.Correspondence.Tests/Altinn.Dd.Correspondence.Tests.csproj",

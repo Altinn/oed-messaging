@@ -14,9 +14,9 @@
       },
       "Altinn.Dd.Tests.SonarGate": {
         "type": "Direct",
-        "requested": "[2.1.3, )",
-        "resolved": "2.1.3",
-        "contentHash": "669fiLw43i/UC1G/4MVPlRfcYoP753JF3QF0StGGMvge394dHkncQy7kLbzaFt5pX4oh6AAY83lvezqDQJM55w==",
+        "requested": "[2.2.0, )",
+        "resolved": "2.2.0",
+        "contentHash": "+PCyKIz7cR3vTDW4LZki2cuS6AOAN6p3cLd7lPY4NPX3XDuaNdHmNUaFCn75rH1fM6L5mx0iJZHWmyk+U6Sbvw==",
         "dependencies": {
           "Azure.Identity": "1.13.0",
           "Azure.Storage.Blobs": "12.22.2",
