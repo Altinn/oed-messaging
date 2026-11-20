@@ -91,6 +91,72 @@ public class SonarGateInternalsTests : IDisposable
             SonarGateRunner.BeginArgs(Options(), "http://localhost:9000", []),
             StringComparison.Ordinal);
 
+    [Fact]
+    public void Scan_VersionsTheAnalysisByCommit()
+    {
+        // The restored database's new-code period is "since the previous version"; without a
+        // version per commit it would run from the very first analysis.
+        var args = SonarGateRunner.BeginArgs(Options(), "http://localhost:9000", [], "abc1234def");
+
+        Assert.Contains(" /v:\"abc1234def\"", args, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Scan_HasNoVersionWithoutACommit()
+        => Assert.DoesNotContain(
+            "/v:",
+            SonarGateRunner.BeginArgs(Options(), "http://localhost:9000", []),
+            StringComparison.Ordinal);
+
+    [Fact]
+    public void Database_IsStoredBesideTheHistory_PerImage()
+        => Assert.Equal(
+            "oed-app/sonar-db/sonarqube_10.6.0-community",
+            SonarDatabaseStore.Prefix("oed-app", "sonarqube:10.6.0-community"));
+
+    [Fact]
+    public void Database_BackupIsNamedByTimeAndCommit()
+        => Assert.Equal(
+            "p/backups/20260102-030405-abc1234.mv.db.gz",
+            SonarDatabaseStore.BackupName(
+                "p", new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Utc), "abc1234def5678"));
+
+    [Fact]
+    public void Database_TriesTheLatestCopyThenOlderBackups()
+    {
+        var candidates = SonarDatabaseStore.OrderCandidates(
+            "p/sonar.mv.db.gz",
+            "sha3",
+            [
+                ("p/backups/20260101-000000-sha1.mv.db.gz", "sha1"),
+                ("p/backups/20260103-000000-sha3.mv.db.gz", "sha3"),
+                ("p/backups/20260102-000000-sha2.mv.db.gz", "sha2"),
+                ("p/backups/20251231-000000-sha0.mv.db.gz", "sha0"),
+            ]);
+
+        // The backup of the latest run is the same database, so it is skipped; then newest first,
+        // limited to BackupsToTry.
+        Assert.Equal(
+            [
+                "p/sonar.mv.db.gz",
+                "p/backups/20260102-000000-sha2.mv.db.gz",
+                "p/backups/20260101-000000-sha1.mv.db.gz",
+            ],
+            candidates);
+    }
+
+    [Fact]
+    public void Database_FallsBackToBackupsWhenThereIsNoLatestCopy()
+        => Assert.Equal(
+            ["p/backups/20260102-000000-sha2.mv.db.gz", "p/backups/20260101-000000-sha1.mv.db.gz"],
+            SonarDatabaseStore.OrderCandidates(
+                null,
+                null,
+                [
+                    ("p/backups/20260101-000000-sha1.mv.db.gz", "sha1"),
+                    ("p/backups/20260102-000000-sha2.mv.db.gz", "sha2"),
+                ]));
+
     private CoverageCollector NewCollector(SonarGateOptions options)
         // The constructor does not log or run anything, so it needs neither collaborator.
         => new(options, _repo, _repo, logger: null!, process: null!);

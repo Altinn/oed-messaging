@@ -33,6 +33,14 @@ public sealed record SonarGateOptions
     /// </summary>
     public string? SonarTestExclusions { get; init; }
 
+    /// <summary>
+    /// Keep SonarQube's database between runs, in the blob container beside the run history, so the
+    /// quality gate's new-code conditions compare with the last successful run. With <c>false</c>
+    /// every run starts from an empty database, where there is no new code and the default gate
+    /// checks nothing. The database holds the scanned source code. Defaults to <c>true</c>.
+    /// </summary>
+    public bool KeepSonarDatabase { get; init; } = true;
+
     /// <summary>Optional coverage configuration. <c>null</c> = no coverage report collected.</summary>
     public CoverageOptions? Coverage { get; init; }
 

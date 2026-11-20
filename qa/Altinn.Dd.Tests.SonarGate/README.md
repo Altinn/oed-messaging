@@ -75,6 +75,30 @@ oed-admin app (its backend reads the container via managed identity); there is n
 > Publish failures are caught and logged but never fail the test. The SonarQube quality gate is the
 source of truth.
 
+## Saved SonarQube database
+
+SonarQube's default quality gate (Sonar way) only checks new code, and a fresh container has no
+earlier analysis to compare with, so on its own every run would pass whatever it found. With
+`KeepSonarDatabase` (on by default) the package therefore keeps SonarQube's database in the same
+container, beside the history:
+
+| Blob                                                         | Written                         |
+|--------------------------------------------------------------|---------------------------------|
+| `{ProjectKey}/sonar-db/{image}/sonar.mv.db.gz`               | after every run whose gate passed, replacing the previous one |
+| `{ProjectKey}/sonar-db/{image}/backups/{time}-{sha7}.mv.db.gz` | after every run whose gate passed, never replaced |
+
+A run restores the latest copy, scans with the commit SHA as the project version, and so checks
+everything since the last successful run. If a copy cannot be downloaded, does not start, or lacks
+an earlier analysis of the project, the run tries the two newest older backups and then an empty
+database; those fallbacks are logged. A run whose gate fails saves nothing, so its new issues stay
+new code until they are fixed.
+
+- The first run, and the first run after `SonarQubeImage` changes, start empty and check nothing.
+- Backups are never deleted by the package; a lifecycle rule on the storage account can expire them.
+- The database contains the scanned source code. Keep the container private.
+- An issue SonarQube gets wrong cannot be marked as such in the throwaway container; suppress it in
+  code (`#pragma warning disable` or `// NOSONAR`) instead.
+
 ## Consumer dependencies
 
 - `Altinn.Dd.Tests.SonarGate` (this package)

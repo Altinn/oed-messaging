@@ -98,6 +98,28 @@ internal sealed class SonarQubeApi
                 + $"validate: {validateStatus} body={validateBody}.");
     }
 
+    /// <summary>
+    /// True when a container started from a restored database holds what a saved database must
+    /// hold: the rotated admin password, and at least one earlier analysis of this project. A
+    /// database that starts but fails either check is treated as damaged.
+    /// </summary>
+    public async Task<bool> RestoredDatabaseIsUsableAsync(string adminPassword)
+    {
+        SetBasicAuth(_client, "admin", adminPassword);
+        using (var validate = await _client.GetAsync("/api/authentication/validate"))
+        {
+            if (!validate.IsSuccessStatusCode
+                || !(await validate.Content.ReadAsStringAsync()).Contains("\"valid\":true"))
+                return false;
+        }
+
+        using var analyses = await _client.GetAsync($"/api/project_analyses/search?project={_projectKey}&ps=1");
+        if (!analyses.IsSuccessStatusCode) return false;
+        using var doc = JsonDocument.Parse(await analyses.Content.ReadAsStringAsync());
+        return doc.RootElement.TryGetProperty("paging", out var paging)
+               && Json.GetIntOrNull(paging, "total") > 0;
+    }
+
     public async Task WaitForComputeTaskAsync(TimeSpan timeout)
     {
         // After `sonarscanner end`, SonarQube enqueues a Compute Engine task to process the report.

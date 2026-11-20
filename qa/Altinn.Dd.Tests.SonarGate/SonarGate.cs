@@ -14,12 +14,14 @@ public static class SonarGate
     ///
     /// <para>
     /// Internally: probes for QATESTS=1 and Docker (calls <c>Skip.IfNot</c> when missing — so the
-    /// consumer's test must be a <c>[SkippableFact]</c>); starts SonarQube via TestContainers;
-    /// optionally collects coverage from a test project; runs the scanner against the target
-    /// project; polls the SonarQube compute task; fetches the gate, headline metrics, and top-N
-    /// findings; writes a per-run JSON snapshot under <c>QaTests/history/</c>; regenerates
-    /// <c>summary.md</c>; archives the snapshot and summary to Azure Blob storage; and finally
-    /// asserts the gate returned <c>OK</c>.
+    /// consumer's test must be a <c>[SkippableFact]</c>); starts SonarQube via TestContainers,
+    /// restoring the database saved by the last successful run so the gate's new-code conditions
+    /// have something to compare with; optionally collects coverage from a test project; runs the
+    /// scanner against the target project; polls the SonarQube compute task; fetches the gate,
+    /// headline metrics, and top-N findings; writes a per-run JSON snapshot under
+    /// <c>QaTests/history/</c>; regenerates <c>summary.md</c>; archives the snapshot and summary to
+    /// Azure Blob storage; saves the database when the gate passed; and finally asserts the gate
+    /// returned <c>OK</c>.
     /// </para>
     ///
     /// <para>
