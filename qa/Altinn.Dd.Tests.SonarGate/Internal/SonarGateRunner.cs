@@ -93,6 +93,9 @@ internal sealed class SonarGateRunner
         using var disposeClient = sonarClient;
         var sonarHostUrl = sonarClient.BaseAddress!.ToString().TrimEnd('/');
 
+        _logger.Log($"Setting the quality gate ({SonarQubeApi.QualityGateName}: new bugs and vulnerabilities)…");
+        await SonarQubeApi.EnsureQualityGateAsync(sonarClient);
+
         // Optional coverage step runs BEFORE the scanner window so the report exists when we pass
         // its path to `sonarscanner begin`, and so the test project's compilation isn't analyzed.
         IReadOnlyList<string> coverageReports = [];

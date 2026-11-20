@@ -75,9 +75,17 @@ oed-admin app (its backend reads the container via managed identity); there is n
 > Publish failures are caught and logged but never fail the test. The SonarQube quality gate is the
 source of truth.
 
+## Quality gate
+
+Every scan is judged by a gate named `SonarGate`, set as SonarQube's default: it fails on **new
+bugs** or **new vulnerabilities** (`new_bugs > 0`, `new_vulnerabilities > 0`). Sonar way would also
+fail on any new code smell, and with no way to mark an issue "won't fix" in the throwaway container,
+one minor smell would fail every run until the code changed. Code smells, coverage and duplication
+are still measured and archived; they just do not fail the gate.
+
 ## Saved SonarQube database
 
-SonarQube's default quality gate (Sonar way) only checks new code, and a fresh container has no
+The quality gate only checks new code, and a fresh container has no
 earlier analysis to compare with, so on its own every run would pass whatever it found. With
 `KeepSonarDatabase` (on by default) the package therefore keeps SonarQube's database in the same
 container, beside the history:

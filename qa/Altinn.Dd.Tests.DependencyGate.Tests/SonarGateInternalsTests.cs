@@ -157,6 +157,35 @@ public class SonarGateInternalsTests : IDisposable
                     ("p/backups/20260102-000000-sha2.mv.db.gz", "sha2"),
                 ]));
 
+    [Fact]
+    public void Gate_ReplacesSonarWaysConditionsWithBugsAndVulnerabilities()
+    {
+        // What SonarQube 10.6 gives a newly created gate, plus a wrong threshold on one of ours.
+        var (delete, add) = SonarQubeApi.PlanConditions(
+        [
+            ("1", "new_violations", "GT", "0"),
+            ("2", "new_coverage", "LT", "80"),
+            ("3", "new_bugs", "GT", "0"),
+            ("4", "new_vulnerabilities", "GT", "5"),
+        ]);
+
+        Assert.Equal(["1", "2", "4"], delete);
+        Assert.Equal([("new_vulnerabilities", "GT", "0")], add);
+    }
+
+    [Fact]
+    public void Gate_LeavesACorrectGateAlone()
+    {
+        var (delete, add) = SonarQubeApi.PlanConditions(
+        [
+            ("3", "new_bugs", "GT", "0"),
+            ("4", "new_vulnerabilities", "GT", "0"),
+        ]);
+
+        Assert.Empty(delete);
+        Assert.Empty(add);
+    }
+
     private CoverageCollector NewCollector(SonarGateOptions options)
         // The constructor does not log or run anything, so it needs neither collaborator.
         => new(options, _repo, _repo, logger: null!, process: null!);

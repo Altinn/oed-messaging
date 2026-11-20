@@ -120,6 +120,88 @@ internal sealed class SonarQubeApi
                && Json.GetIntOrNull(paging, "total") > 0;
     }
 
+    /// <summary>The quality gate every scan is judged by. Set as SonarQube's default gate.</summary>
+    public const string QualityGateName = "SonarGate";
+
+    /// <summary>
+    /// Fail on new bugs and new vulnerabilities only. Sonar way also fails on any new code smell
+    /// (<c>new_violations &gt; 0</c>), and nobody can mark an issue "won't fix" in the throwaway
+    /// container, so a single minor smell would fail the nightly run until the code changed.
+    /// </summary>
+    internal static readonly IReadOnlyList<(string Metric, string Op, string Error)> GateConditions =
+    [
+        ("new_bugs", "GT", "0"),
+        ("new_vulnerabilities", "GT", "0"),
+    ];
+
+    /// <summary>
+    /// Creates <see cref="QualityGateName"/> if needed, makes its conditions exactly
+    /// <see cref="GateConditions"/>, and sets it as the default gate. Idempotent, so it runs on a
+    /// restored database too, where the gate already exists.
+    /// </summary>
+    public static async Task EnsureQualityGateAsync(HttpClient client)
+    {
+        using (var show = await client.GetAsync($"/api/qualitygates/show?name={QualityGateName}"))
+        {
+            if (show.StatusCode == System.Net.HttpStatusCode.NotFound)
+                await PostAsync(client, "/api/qualitygates/create", new() { ["name"] = QualityGateName });
+            else
+                show.EnsureSuccessStatusCode();
+        }
+
+        // A new gate in SonarQube 10.x starts with Sonar way's conditions, so the existing ones
+        // have to be read back, not assumed empty.
+        List<(string Id, string Metric, string Op, string Error)> existing = [];
+        using (var show = await client.GetAsync($"/api/qualitygates/show?name={QualityGateName}"))
+        {
+            show.EnsureSuccessStatusCode();
+            using var doc = JsonDocument.Parse(await show.Content.ReadAsStringAsync());
+            if (doc.RootElement.TryGetProperty("conditions", out var conditions))
+                foreach (var c in conditions.EnumerateArray())
+                    existing.Add((
+                        Json.GetStringOrEmpty(c, "id"),
+                        Json.GetStringOrEmpty(c, "metric"),
+                        Json.GetStringOrEmpty(c, "op"),
+                        Json.GetStringOrEmpty(c, "error")));
+        }
+
+        var (delete, add) = PlanConditions(existing);
+        foreach (var id in delete)
+            await PostAsync(client, "/api/qualitygates/delete_condition", new() { ["id"] = id });
+        foreach (var (metric, op, error) in add)
+            await PostAsync(client, "/api/qualitygates/create_condition", new()
+            {
+                ["gateName"] = QualityGateName, ["metric"] = metric, ["op"] = op, ["error"] = error,
+            });
+
+        await PostAsync(client, "/api/qualitygates/set_as_default", new() { ["name"] = QualityGateName });
+    }
+
+    /// <summary>
+    /// What turns <paramref name="existing"/> into <see cref="GateConditions"/>: every condition
+    /// that is not exactly one of them is deleted, and every one that is missing is added.
+    /// </summary>
+    internal static (IReadOnlyList<string> Delete, IReadOnlyList<(string Metric, string Op, string Error)> Add)
+        PlanConditions(IReadOnlyList<(string Id, string Metric, string Op, string Error)> existing)
+    {
+        var delete = existing
+            .Where(e => !GateConditions.Contains((e.Metric, e.Op, e.Error)))
+            .Select(e => e.Id)
+            .ToList();
+        var add = GateConditions
+            .Where(g => !existing.Any(e => (e.Metric, e.Op, e.Error) == g))
+            .ToList();
+        return (delete, add);
+    }
+
+    private static async Task PostAsync(HttpClient client, string path, Dictionary<string, string> form)
+    {
+        using var resp = await client.PostAsync(path, new FormUrlEncodedContent(form));
+        if (!resp.IsSuccessStatusCode)
+            throw new SonarGateException(
+                $"SonarQube {path} failed: {(int)resp.StatusCode} {await resp.Content.ReadAsStringAsync()}");
+    }
+
     public async Task WaitForComputeTaskAsync(TimeSpan timeout)
     {
         // After `sonarscanner end`, SonarQube enqueues a Compute Engine task to process the report.
