@@ -121,5 +121,7 @@ unit the programme's dependency audit uses, so the numbers line up.
 
 ## SAS token
 
-Identical to SonarGate's; see the main `README.md` for how to mint `AZURE_STORAGE_SAS_TOKEN` and
-store it as an Actions secret. Both gates read the same variable.
+Identical to SonarGate's; see
+[SAS token in the SonarGate README](https://github.com/Altinn/oed-messaging/blob/main/qa/Altinn.Dd.Tests.SonarGate/README.md#sas-token)
+for how to mint `AZURE_STORAGE_SAS_TOKEN` and store it as an Actions secret. Both gates read the
+same variable.

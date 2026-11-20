@@ -40,26 +40,43 @@ internal sealed class CoverageCollector
         _runsettingsAbsolute = options.Coverage.RunsettingsRelativePath is { } rel
             ? Path.Combine(repoRoot, rel)
             : null;
+        // The option promises the file is used verbatim. Falling back to a generated one would
+        // ignore the consumer's collector configuration and change the numbers without a word.
+        if (_runsettingsAbsolute is not null && !File.Exists(_runsettingsAbsolute))
+            throw new SonarGateException(
+                $"Coverage.RunsettingsRelativePath '{options.Coverage.RunsettingsRelativePath}' "
+                + $"does not exist under '{repoRoot}'.");
         _excludes = options.Coverage.Excludes;
 
         // If CoverageInputRoots is empty, derive defaults from the scan target's folder + the test
         // folder. Consumers can extend (or override) when they have additional source roots that
-        // affect coverage.
+        // affect coverage. A project at the repo root has an empty folder name, which means the
+        // repo root itself - dropping it would leave that project's sources out of the cache key
+        // and reuse a stale report after they change.
         var inputs = options.Coverage.CoverageInputRoots;
         if (inputs.Length == 0)
         {
-            inputs = new[]
-            {
-                Path.GetDirectoryName(options.ScanCsprojRelativePath) ?? "",
-                Path.GetDirectoryName(options.Coverage.TestCsprojRelativePath) ?? "",
-            }
-            .Where(p => !string.IsNullOrEmpty(p))
-            .ToArray();
+            inputs =
+            [
+                FolderOf(options.ScanCsprojRelativePath),
+                FolderOf(options.Coverage.TestCsprojRelativePath),
+            ];
         }
+
+        // A root that does not exist would silently drop out of the cache key, so a typo in
+        // CoverageInputRoots must fail rather than quietly weaken the cache.
+        var missing = inputs.Where(r => !Directory.Exists(Path.Combine(repoRoot, r))).ToList();
+        if (missing.Count > 0)
+            throw new SonarGateException(
+                $"Coverage input root(s) not found under '{repoRoot}': {string.Join(", ", missing)}");
+
         _inputRoots = inputs
-            .Select(r => Path.Combine(repoRoot, r))
-            .Where(Directory.Exists)
+            .Select(r => Path.GetFullPath(Path.Combine(repoRoot, r)))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
+
+        static string FolderOf(string relativePath)
+            => Path.GetDirectoryName(relativePath) is { Length: > 0 } dir ? dir : ".";
     }
 
     public async Task<string> CollectAsync(bool forceRebuild)
@@ -111,7 +128,7 @@ internal sealed class CoverageCollector
     // OpenCover, not the default Cobertura) and the configured assembly excludes.
     private string ResolveOrGenerateRunsettings(string coverageDir)
     {
-        if (_runsettingsAbsolute is not null && File.Exists(_runsettingsAbsolute))
+        if (_runsettingsAbsolute is not null)
             return _runsettingsAbsolute;
 
         var generated = Path.Combine(coverageDir, "coverlet.runsettings");
@@ -146,6 +163,7 @@ internal sealed class CoverageCollector
         // file's content would otherwise hash the same as the original.
         var inputs = _inputRoots
             .SelectMany(EnumerateCoverageInputs)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .Where(File.Exists)
             .Select(p => (Absolute: p, Relative: Path.GetRelativePath(_repoRoot, p).Replace('\\', '/')))
             .OrderBy(t => t.Relative, StringComparer.Ordinal)
@@ -166,7 +184,7 @@ internal sealed class CoverageCollector
         // Hash the effective runsettings content (either the explicit consumer file or the XML we'd
         // generate from Excludes). Path is intentionally excluded so cache hits don't depend on
         // where the file lives — only what it contains determines the coverage behavior.
-        var settingsContent = _runsettingsAbsolute is not null && File.Exists(_runsettingsAbsolute)
+        var settingsContent = _runsettingsAbsolute is not null
             ? File.ReadAllBytes(_runsettingsAbsolute)
             : Encoding.UTF8.GetBytes(BuildGeneratedRunsettingsXml());
         var tag = Encoding.UTF8.GetBytes("runsettings:");

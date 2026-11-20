@@ -32,8 +32,8 @@ public class SonarGateTests(ITestOutputHelper output)
         Coverage = new()
         {
             TestCsprojRelativePath = "Altinn.Dd.Correspondence.Tests/Altinn.Dd.Correspondence.Tests.csproj",
-            // The scan target is a solution at the repo root, which contributes no folder to the
-            // default cache key, so name the production project explicitly.
+            // The scan target is a solution at the repo root, so the default cache key would hash
+            // the whole repository. Name the projects the coverage actually comes from instead.
             CoverageInputRoots = ["Altinn.Dd.Correspondence", "Altinn.Dd.Correspondence.Tests"],
         },
     }, output);

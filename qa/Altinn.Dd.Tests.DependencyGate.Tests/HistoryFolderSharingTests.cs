@@ -44,15 +44,29 @@ public class HistoryFolderSharingTests : IDisposable
     private void WriteSonarSnapshot(string name) =>
         File.WriteAllText(Path.Combine(_dir, name), SonarSnapshot);
 
-    private void WriteDependencySnapshot()
+    private string WriteDependencySnapshot(bool failed = false)
     {
         var writer = new DependencyHistoryWriter(_dir, "oed-app");
-        writer.WriteSnapshot(
+        return writer.WriteSnapshot(
             rows: [],
             threshold: AdvisorySeverity.High,
             blockingCount: 0,
             projectsAudited: 4,
-            projectsOutsideSolution: []);
+            projectsOutsideSolution: failed ? ["Scratch/Scratch.csproj"] : [],
+            failed: failed);
+    }
+
+    [Theory]
+    [InlineData(false, "OK")]
+    [InlineData(true, "FAILED")]
+    public void DependencySnapshot_RecordsTheWholeVerdict_NotJustTheAdvisories(bool failed, string expected)
+    {
+        // No blocking advisories in either case: a run that fails on projects outside the solution
+        // must still be archived as FAILED, or the dashboard shows green for a red test.
+        var file = WriteDependencySnapshot(failed);
+
+        using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(file));
+        Assert.Equal(expected, doc.RootElement.GetProperty("gate").GetProperty("status").GetString());
     }
 
     [Fact]

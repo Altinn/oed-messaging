@@ -53,11 +53,16 @@ internal sealed class SonarGateRunner
         // Daily-cron trigger means "no changes" == HEAD hasn't moved since the last archived run;
         // re-scanning the same commit yields an identical gate, snapshot, and dashboard. A null on
         // either side (first run, legacy snapshot, git/blob unavailable) never skips.
+        // HEAD says nothing about uncommitted edits, so QATESTS_FORCE=1 runs anyway - the scan's
+        // counterpart to QATESTS_COVERAGE=force.
+        var force = string.Equals(
+            Environment.GetEnvironmentVariable("QATESTS_FORCE"), "1", StringComparison.Ordinal);
         var headSha = await GitHead.ResolveAsync(repoRoot);
-        var lastSha = await archiver.GetLastArchivedCommitShaAsync();
+        var lastSha = force ? null : await archiver.GetLastArchivedCommitShaAsync();
         Skip.If(
             headSha is not null && string.Equals(headSha, lastSha, StringComparison.Ordinal),
-            $"No commits since last QA run ({headSha?[..7]}); result would be identical.");
+            $"No commits since last QA run ({headSha?[..7]}); result would be identical. "
+            + "Set QATESTS_FORCE=1 to run anyway.");
 
         var scannerExe = await EnsureSonarScannerAsync(qaTestsDir);
 

@@ -17,10 +17,15 @@ internal static class Json
             ? v.GetString() ?? ""
             : "";
 
-    /// <summary>The int at <paramref name="name"/>, or null if absent or not a number.</summary>
+    /// <summary>
+    /// The int at <paramref name="name"/>, or null if absent, not a number, or a number that does
+    /// not fit an <see cref="int"/> (out of range or not integral).
+    /// </summary>
     public static int? GetIntOrNull(JsonElement element, string name)
-        => element.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number
-            ? v.GetInt32()
+        => element.TryGetProperty(name, out var v)
+           && v.ValueKind == JsonValueKind.Number
+           && v.TryGetInt32(out var i)
+            ? i
             : null;
 
     /// <summary>True when <paramref name="name"/> is present and is JSON <c>true</c>.</summary>

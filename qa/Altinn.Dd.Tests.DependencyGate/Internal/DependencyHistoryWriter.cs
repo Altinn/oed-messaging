@@ -92,7 +92,8 @@ internal sealed class DependencyHistoryWriter
         AdvisorySeverity threshold,
         int blockingCount,
         int projectsAudited,
-        IReadOnlyList<string> projectsOutsideSolution)
+        IReadOnlyList<string> projectsOutsideSolution,
+        bool failed)
     {
         Directory.CreateDirectory(_historyDir);
         var ts = DateTime.UtcNow;
@@ -104,7 +105,9 @@ internal sealed class DependencyHistoryWriter
             Gate = new
             {
                 Threshold = threshold.ToString(),
-                Status = blockingCount == 0 ? "OK" : "FAILED",
+                // The whole verdict, not just the advisories: a run that fails because projects
+                // sit outside the solution must not be archived as OK.
+                Status = failed ? "FAILED" : "OK",
                 Blocking = blockingCount,
             },
             Counts = new

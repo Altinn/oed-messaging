@@ -23,6 +23,9 @@ internal sealed class ProcessRunner
     /// </summary>
     public static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(10);
 
+    /// <summary>How long a timed-out process gets to exit after it is killed.</summary>
+    private static readonly TimeSpan KillGracePeriod = TimeSpan.FromSeconds(5);
+
     private readonly Logger _logger;
     private readonly Func<string, Exception> _onFailure;
 
@@ -90,16 +93,20 @@ internal sealed class ProcessRunner
         using var process = new Process { StartInfo = psi };
         var stdout = new StringBuilder();
         var stderr = new StringBuilder();
+        // The callbacks run on thread-pool threads and can still fire after a timeout returns:
+        // cancellation ends the wait, not the readers. Every append and every snapshot of the
+        // builders goes through this lock so a late line cannot race the ToString below.
+        var gate = new Lock();
         process.OutputDataReceived += (_, e) =>
         {
             if (e.Data is null) return;
-            stdout.AppendLine(e.Data);
+            lock (gate) stdout.AppendLine(e.Data);
             streamLog?.Invoke(e.Data);
         };
         process.ErrorDataReceived += (_, e) =>
         {
             if (e.Data is null) return;
-            stderr.AppendLine(e.Data);
+            lock (gate) stderr.AppendLine(e.Data);
             streamLog?.Invoke(e.Data);
         };
 
@@ -116,10 +123,15 @@ internal sealed class ProcessRunner
         catch (OperationCanceledException)
         {
             try { process.Kill(entireProcessTree: true); } catch { /* already gone */ }
-            return (-1, stdout.ToString(),
-                $"{stderr}Timed out after {limit.TotalMinutes:0} minutes.");
+            // Kill is asynchronous. Give the process a bounded moment to exit so its last output
+            // lands in the builders; never an unbounded wait, which would undo the timeout.
+            try { process.WaitForExit(KillGracePeriod); } catch { /* already gone */ }
+            lock (gate)
+                return (-1, stdout.ToString(),
+                    $"{stderr}Timed out after {limit.TotalMinutes:0} minutes.");
         }
 
-        return (process.ExitCode, stdout.ToString(), stderr.ToString());
+        lock (gate)
+            return (process.ExitCode, stdout.ToString(), stderr.ToString());
     }
 }

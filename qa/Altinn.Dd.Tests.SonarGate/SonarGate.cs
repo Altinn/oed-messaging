@@ -18,13 +18,13 @@ public static class SonarGate
     /// optionally collects coverage from a test project; runs the scanner against the target
     /// project; polls the SonarQube compute task; fetches the gate, headline metrics, and top-N
     /// findings; writes a per-run JSON snapshot under <c>QaTests/history/</c>; regenerates
-    /// <c>summary.md</c>; optionally publishes to the dd-qa repo; and finally asserts the gate
-    /// returned <c>OK</c>.
+    /// <c>summary.md</c>; archives the snapshot and summary to Azure Blob storage; and finally
+    /// asserts the gate returned <c>OK</c>.
     /// </para>
     ///
     /// <para>
-    /// On gate failure throws <c>Xunit.Sdk.XunitException</c> with the failing conditions in the
-    /// message. dd-qa publish errors are non-fatal — the gate result is the source of truth.
+    /// On gate failure throws <see cref="SonarGateException"/> with the failing conditions in the
+    /// message. Blob archive errors are non-fatal — the gate result is the source of truth.
     /// </para>
     ///
     /// <para>
@@ -33,7 +33,7 @@ public static class SonarGate
     /// <c>.sln</c> and resolve the repo root — no consumer configuration needed.
     /// </para>
     /// </summary>
-    /// <param name="options">Per-project configuration (project key, scan target, coverage, dd-qa).</param>
+    /// <param name="options">Per-project configuration (project key, scan target, coverage, blob archive).</param>
     /// <param name="output">xUnit test output sink, used for buffered test diagnostics.</param>
     /// <param name="consumerCallerPath">Do not pass — populated by <c>[CallerFilePath]</c>.</param>
     public static Task RunAsync(
