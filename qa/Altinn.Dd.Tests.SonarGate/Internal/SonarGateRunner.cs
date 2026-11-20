@@ -243,7 +243,14 @@ internal sealed class SonarGateRunner
 
         var sonarHostUrl = $"http://{container.Hostname}:{container.GetMappedPublicPort(9000)}";
         _logger.Log($"SonarQube UP at {sonarHostUrl}");
-        return (container, new HttpClient { BaseAddress = new Uri(sonarHostUrl) });
+        // No cookies: SonarQube answers an authenticated call with a session cookie, and a POST that
+        // carries that cookie must also carry its anti-forgery token, or SonarQube returns 401 even
+        // though the Basic auth header is valid. Basic auth alone is all this client needs.
+        var client = new HttpClient(new HttpClientHandler { UseCookies = false })
+        {
+            BaseAddress = new Uri(sonarHostUrl),
+        };
+        return (container, client);
     }
 
     /// <summary>
