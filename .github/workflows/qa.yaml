@@ -31,9 +31,9 @@ jobs:
     - name: Build project
       run: dotnet build -c Release --no-restore
 
-    # Altinn.Dd.Tests.SonarGate scans the project, archives the snapshot to the oedqa blob
-    # container, and publishes the dashboard to the account's $web static-website container
-    # (auth via the SAS secret). No separate deploy step or hosting token is needed.
+    # Both gates archive their snapshots and summaries to the private "reports" container in the
+    # oedqa storage account (auth via the SAS secret). Nothing is published; the dashboard is
+    # rendered elsewhere from those blobs, so no deploy step or hosting token is needed.
     - name: Run QA tests
       env:
         AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}

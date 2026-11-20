@@ -15,7 +15,7 @@ public class HistoryFolderTests : IDisposable
         new(@"^deps-\d{8}-\d{6}\.json$", RegexOptions.CultureInvariant);
 
     private readonly string _dir = Path.Combine(
-        Path.GetTempPath(), "dd-qa-hf-" + Guid.NewGuid().ToString("N")[..8]);
+        Path.GetTempPath(), "qa-gate-hf-" + Guid.NewGuid().ToString("N")[..8]);
 
     public HistoryFolderTests()
     {

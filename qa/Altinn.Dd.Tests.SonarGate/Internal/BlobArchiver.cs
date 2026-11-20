@@ -7,7 +7,7 @@ using Azure.Storage.Blobs.Models;
 namespace Altinn.Dd.Tests.SonarGate.Internal;
 
 /// <summary>
-/// Uploads the per-run snapshot JSON + regenerated <c>summary.md</c> into the dd-qa blob container
+/// Uploads the per-run snapshot JSON + regenerated <c>summary.md</c> into the QA blob container
 /// under <c>{ProjectKey}/history/</c>. Pure archive — nothing here builds or deploys a dashboard.
 ///
 /// The cross-project dashboard is rendered live by the admin apps, which read these same blobs

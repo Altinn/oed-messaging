@@ -11,7 +11,7 @@ namespace Altinn.Dd.Tests.DependencyGate.Tests;
 public class SonarGateInternalsTests : IDisposable
 {
     private readonly string _repo = Path.Combine(
-        Path.GetTempPath(), "dd-qa-repo-" + Guid.NewGuid().ToString("N")[..8]);
+        Path.GetTempPath(), "qa-gate-repo-" + Guid.NewGuid().ToString("N")[..8]);
 
     public SonarGateInternalsTests() => Directory.CreateDirectory(_repo);
 

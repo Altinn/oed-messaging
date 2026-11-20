@@ -30,7 +30,7 @@ public sealed record SonarGateOptions
     public CoverageOptions? Coverage { get; init; }
 
     /// <summary>
-    /// Azure Storage account that hosts the dd-qa blob container. Defaults to the shared DD-wide
+    /// Azure Storage account that hosts the QA blob container. Defaults to the shared DD-wide
     /// account; override only for local-dev or programme-isolated setups.
     /// </summary>
     public string BlobStorageAccount { get; init; } = "oedqa";

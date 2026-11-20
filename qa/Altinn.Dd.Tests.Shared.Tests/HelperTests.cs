@@ -80,7 +80,7 @@ public class RepoRootTests
     [Fact]
     public void Resolve_FindsTheNearestSolutionFolder()
     {
-        var root = Path.Combine(Path.GetTempPath(), "dd-qa-rr-" + Guid.NewGuid().ToString("N")[..8]);
+        var root = Path.Combine(Path.GetTempPath(), "qa-gate-rr-" + Guid.NewGuid().ToString("N")[..8]);
         var nested = Path.Combine(root, "tests", "SomeTests");
         Directory.CreateDirectory(nested);
         try
@@ -100,7 +100,7 @@ public class RepoRootTests
     [Fact]
     public void Resolve_ThrowsWhenThereIsNoSolutionAbove()
     {
-        var dir = Path.Combine(Path.GetTempPath(), "dd-qa-rr-" + Guid.NewGuid().ToString("N")[..8]);
+        var dir = Path.Combine(Path.GetTempPath(), "qa-gate-rr-" + Guid.NewGuid().ToString("N")[..8]);
         Directory.CreateDirectory(dir);
         try
         {

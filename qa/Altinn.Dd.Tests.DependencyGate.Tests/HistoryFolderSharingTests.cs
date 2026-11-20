@@ -15,7 +15,7 @@ namespace Altinn.Dd.Tests.DependencyGate.Tests;
 public class HistoryFolderSharingTests : IDisposable
 {
     private readonly string _dir = Path.Combine(
-        Path.GetTempPath(), "dd-qa-history-" + Guid.NewGuid().ToString("N")[..8]);
+        Path.GetTempPath(), "qa-gate-history-" + Guid.NewGuid().ToString("N")[..8]);
 
     public HistoryFolderSharingTests() => Directory.CreateDirectory(_dir);
 

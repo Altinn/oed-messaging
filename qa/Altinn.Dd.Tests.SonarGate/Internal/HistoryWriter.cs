@@ -8,8 +8,8 @@ namespace Altinn.Dd.Tests.SonarGate.Internal;
 
 /// <summary>
 /// Writes per-run JSON snapshots and regenerates the consumer's <c>history/summary.md</c>.
-/// All paths are local to the consumer's QaTests folder; the dd-qa publish step (see
-/// <c>DdQaPublisher</c>) is responsible for mirroring these to the central repo.
+/// All paths are local to the consumer's QaTests folder; <see cref="BlobArchiver"/> then archives
+/// the snapshot and summary to blob storage.
 /// </summary>
 internal sealed class HistoryWriter
 {
@@ -138,8 +138,8 @@ internal sealed class HistoryWriter
             CultureInfo.InvariantCulture,
             DateTimeStyles.RoundtripKind);
 
-        // Heading is intentionally timestamp-free so external links (e.g. dd-qa root README) can use
-        // a stable `#latest-run-details` anchor that survives every regeneration.
+        // Heading is intentionally timestamp-free so external links can use a stable
+        // `#latest-run-details` anchor that survives every regeneration.
         sb.AppendLine();
         sb.AppendLine("## Latest run details");
         sb.AppendLine();

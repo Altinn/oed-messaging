@@ -65,7 +65,7 @@ jobs:
           dotnet nuget push *.${VERSION}.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_ORG_API_KEY }} --skip-duplicate
           dotnet nuget push *.${VERSION}.snupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_ORG_API_KEY }} --skip-duplicate
 
-      - name: Upload artifacts (for non-tagged builds)
+      - name: Upload artifacts (when not publishing)
         if: "!(github.event_name == 'push' && startsWith(github.ref, 'refs/tags/internalevents-v'))"
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
