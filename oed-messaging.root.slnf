@@ -1,0 +1,11 @@
+{
+  "solution": {
+    "path": "oed-messaging.slnx",
+    "projects": [
+      "Altinn.Dd.Correspondence.Tests\\Altinn.Dd.Correspondence.Tests.csproj",
+      "Altinn.Dd.Correspondence\\Altinn.Dd.Correspondence.csproj",
+      "Altinn.Dd.InternalEvents\\Altinn.Dd.InternalEvents.csproj",
+      "SendDdCorrespondence\\SendDdCorrespondence.csproj"
+    ]
+  }
+}

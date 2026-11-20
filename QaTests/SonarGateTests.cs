@@ -9,7 +9,9 @@ namespace QaTests;
 // in qa/Altinn.Dd.Tests.SonarGate in this repository.
 //
 // Two scans, each with its own SonarQube container and ProjectKey:
-// - RootProjects: everything in oed-messaging.slnx except qa/ and QaTests/. Coverage comes from
+// - RootProjects: everything in oed-messaging.slnx except qa/ and QaTests/, built through the
+//   oed-messaging.root.slnf filter. Building oed-messaging.slnx would rebuild QaTests into the bin
+//   folder its own running testhost has locked, which fails on Windows. Coverage comes from
 //   Altinn.Dd.Correspondence.Tests. It must not come from oed-messaging.slnx, which contains this
 //   project: `dotnet test` on it would start these QA tests again from inside their own run.
 // - QaProjects: qa/oed-qa.slnx, the gate packages and their tests, which also supply coverage.
@@ -27,7 +29,7 @@ public class SonarGateTests(ITestOutputHelper output)
     public Task RootProjects_QualityGate_ReturnsOk() => SonarGate.RunAsync(new()
     {
         ProjectKey = "oed-messaging",
-        ScanCsprojRelativePath = "oed-messaging.slnx",
+        ScanCsprojRelativePath = "oed-messaging.root.slnf",
         SonarExclusions = DefaultExclusions + ",**/qa/**,**/QaTests/**",
         // The test projects under qa/, and QaTests itself, are test code, which SonarExclusions
         // does not reach.
