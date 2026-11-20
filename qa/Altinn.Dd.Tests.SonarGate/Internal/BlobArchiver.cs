@@ -1,5 +1,6 @@
 using Altinn.Dd.Tests.Shared;
 using System.Text.Json;
+using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 
@@ -41,10 +42,15 @@ internal sealed class BlobArchiver
         try
         {
             var snapshotName = Path.GetFileName(snapshotFile);
+            // Snapshots are history: never overwrite one. Names have one-second resolution, so two
+            // runs of the same ProjectKey finishing in the same second would otherwise replace each
+            // other silently. The second upload fails instead and is logged below. The name format
+            // stays as it is because oed-admin reads this layout.
             await UploadFileAsync(
                 $"{_projectKey}/history/{snapshotName}",
                 snapshotFile,
-                "application/json");
+                "application/json",
+                overwrite: false);
 
             var summary = Path.Combine(_localHistoryDir, "summary.md");
             if (File.Exists(summary))
@@ -63,30 +69,30 @@ internal sealed class BlobArchiver
 
     /// <summary>
     /// Returns the <c>commitSha</c> recorded by the most recent archived snapshot, or <c>null</c>
-    /// when there is none yet, the newest snapshot predates the field (legacy), or the blob store
-    /// can't be read. Callers treat <c>null</c> as "can't prove unchanged — run anyway", so a read
-    /// failure here never causes a real run to be skipped.
+    /// when there is none yet, the newest snapshot predates the field (legacy), its quality gate
+    /// was not <c>OK</c>, or the blob store can't be read. Callers treat <c>null</c> as "can't
+    /// prove unchanged — run anyway", so a read failure here never causes a real run to be skipped,
+    /// and a failed gate is reported again on every run until a new commit fixes it.
     /// </summary>
     public async Task<string?> GetLastArchivedCommitShaAsync()
     {
         try
         {
             // Snapshot blobs are named {ProjectKey}/history/yyyyMMdd-HHmmss.json, so the prefix is
-            // identical across runs and ordinal name comparison == chronological order.
+            // identical across runs and ordinal name comparison == chronological order. The folder
+            // also holds DependencyGate's deps-*.json, which sort after every timestamp and carry
+            // no commitSha, so only names matching this gate's own pattern count.
             string? newest = null;
             await foreach (var item in _container.GetBlobsAsync(prefix: $"{_projectKey}/history/"))
             {
-                if (!item.Name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)) continue;
+                if (!IsSonarSnapshot(item.Name)) continue;
                 if (newest is null || string.CompareOrdinal(item.Name, newest) > 0)
                     newest = item.Name;
             }
             if (newest is null) return null;
 
             var content = await _container.GetBlobClient(newest).DownloadContentAsync();
-            using var doc = JsonDocument.Parse(content.Value.Content.ToString());
-            return doc.RootElement.TryGetProperty("commitSha", out var sha)
-                ? sha.GetString()
-                : null;
+            return CommitShaOfPassingRun(content.Value.Content.ToString());
         }
         catch (Exception ex)
         {
@@ -95,10 +101,35 @@ internal sealed class BlobArchiver
         }
     }
 
-    private async Task UploadFileAsync(string blobName, string filePath, string contentType)
+    /// <summary>True when the blob's basename is one of this gate's snapshots.</summary>
+    internal static bool IsSonarSnapshot(string blobName)
+        => HistoryWriter.SnapshotNamePattern.IsMatch(blobName[(blobName.LastIndexOf('/') + 1)..]);
+
+    /// <summary>
+    /// The snapshot's <c>commitSha</c> when its quality gate was <c>OK</c>, otherwise <c>null</c>.
+    /// A failed run archives its snapshot before throwing; reusing that SHA would turn the next
+    /// run at the same HEAD into a skip and hide the failure.
+    /// </summary>
+    internal static string? CommitShaOfPassingRun(string snapshotJson)
+    {
+        using var doc = JsonDocument.Parse(snapshotJson);
+        var root = doc.RootElement;
+        var passed = root.TryGetProperty("qualityGate", out var gate)
+                     && Json.GetStringOrEmpty(gate, "status") == "OK";
+        var sha = Json.GetStringOrEmpty(root, "commitSha");
+        return passed && sha.Length > 0 ? sha : null;
+    }
+
+    private async Task UploadFileAsync(
+        string blobName, string filePath, string contentType, bool overwrite = true)
     {
         var blob = _container.GetBlobClient(blobName);
-        var headers = new BlobHttpHeaders { ContentType = contentType };
-        await blob.UploadAsync(filePath, new BlobUploadOptions { HttpHeaders = headers });
+        var options = new BlobUploadOptions
+        {
+            HttpHeaders = new BlobHttpHeaders { ContentType = contentType },
+            // If-None-Match: * makes the service reject the upload when the blob already exists.
+            Conditions = overwrite ? null : new BlobRequestConditions { IfNoneMatch = ETag.All },
+        };
+        await blob.UploadAsync(filePath, options);
     }
 }

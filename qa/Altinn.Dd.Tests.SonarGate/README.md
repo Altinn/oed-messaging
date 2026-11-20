@@ -45,6 +45,10 @@ public class MyProjectSonarGateTests(ITestOutputHelper output)
 Set `QATESTS=1` to opt in (a plain `dotnet test` skips). Docker must be reachable for the
 SonarQube TestContainer.
 
+A run is skipped when HEAD is the commit of the last archived run that passed, because the result
+would be identical. HEAD says nothing about uncommitted edits, so set `QATESTS_FORCE=1` to scan
+anyway. `QATESTS_COVERAGE=force` likewise rebuilds a cached coverage report.
+
 ## Publish target
 
 Per run, the package **archives** the snapshot JSON + regenerated `summary.md` to an Azure Blob
@@ -98,16 +102,15 @@ $ACCOUNT_KEY = az storage account keys list `
     --query '[0].value' -o tsv
 ```
 
-### Step 2 — Generate an account-scoped SAS
+### Step 2 — Generate a SAS for the `reports` container
 
-The token must cover **both** the private `reports` container (history) and the `$web`
-static-website container (dashboard), so it's an account SAS rather than a single-container one:
+Both gates write only to the private `reports` container, so the token is scoped to that one
+container:
 
 ```powershell
-az storage account generate-sas `
+az storage container generate-sas `
   --account-name oedqa `
-  --services b `
-  --resource-types co `
+  --name reports `
   --permissions rwl `
   --expiry 2027-06-02 `
   --https-only `
@@ -115,10 +118,10 @@ az storage account generate-sas `
   -o tsv
 ```
 
-- `--services b` / `--resource-types co` — Blob service, Container + Object level, so the single
-  token reaches every container (`reports` and `$web`).
-- `--permissions rwl` — read (dashboard regen), write (snapshot + `$web` uploads), list (find
-  latest snapshot per project). Deliberately no `d`: a leaked SAS can overwrite, but can't tombstone.
+- `--name reports` — the archive container. No other container is needed.
+- `--permissions rwl` — read (the last snapshot's commit SHA for the unchanged-HEAD skip), write
+  (snapshot and summary uploads), list (find the latest snapshot per project). Deliberately no
+  `d`: a leaked SAS can write, but can't delete.
 - `--expiry` — pick something you can plausibly remember to rotate. 1–2 years balances
   rotation pain against hygiene.
 - `--https-only` — refuses plain HTTP. Always on.
@@ -144,9 +147,11 @@ The workflow's test step picks the SAS up via:
 ```yaml
 - name: Run QA tests
   env:
+    QATESTS: '1'
     AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
   run: dotnet test QaTests --no-restore --verbosity normal
 ```
 
-The test step is the whole job — the runner archives history to `reports` and publishes the
-dashboard to `$web` in-process. No separate deploy step or hosting token is needed.
+The test step is the whole job — the runner archives history to `reports` in-process. The
+dashboard is rendered separately by the oed-admin app from those snapshots, so there is no deploy
+step or hosting token.

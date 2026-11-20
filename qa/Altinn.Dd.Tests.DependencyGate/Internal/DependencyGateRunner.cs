@@ -41,10 +41,12 @@ internal sealed class DependencyGateRunner
         _logger.Log($"Auditing solution: {Path.GetFileName(solution)}");
 
         // No --force-evaluate and no restore: the QA workflow restores before the test step, and
-        // this must report on what is actually resolved rather than re-resolving it.
+        // this must report on what is actually resolved rather than re-resolving it. --no-restore
+        // is explicit because `dotnet list package` restores implicitly otherwise, and a restore
+        // that fails on NU1903/NU1904 lists nothing - before IgnoredAdvisories is ever applied.
         var (exitCode, stdout, stderr) = await ProcessRunner.RunRawAsync(
             "dotnet",
-            $"list \"{solution}\" package --vulnerable --include-transitive --format json",
+            $"list \"{solution}\" package --vulnerable --include-transitive --format json --no-restore",
             workingDir: repoRoot,
             timeout: TimeSpan.FromMinutes(10));
 
@@ -68,18 +70,37 @@ internal sealed class DependencyGateRunner
                 $"  {(p.IsPackagesConfigProject ? "Not auditable" : "Problem")}: "
                 + $"{Path.GetFileName(p.Project)} — {p.Text}");
 
+        var findings = VulnerabilityReport.Parse(json!);
+        var rows = DependencyHistoryWriter.Collapse(findings, _options.IgnoredAdvisories);
+        var blocking = VulnerabilityReport
+            .Blocking(findings, _options.FailAtOrAbove, _options.IgnoredAdvisories);
+        var blockingRows = rows
+            .Where(r => r.Severity >= _options.FailAtOrAbove && !r.Ignored)
+            .ToList();
+
+        foreach (var r in rows)
+            _logger.Log(
+                $"  {r.Severity,-8} {r.Package} {r.ResolvedVersion} "
+                + $"[{(r.Direct ? "direct" : "transitive")}] {r.AdvisoryId} "
+                + $"({string.Join(", ", r.Projects)}){(r.Ignored ? " — ignored by configuration" : "")}");
+
         // A project the SDK cannot evaluate at all is a real gap; one that merely uses
         // packages.config is not, because it holds no PackageReference to audit. The .esproj
         // wrappers here are npm clients whose actual dependencies are their package-lock.json.
-        // FirstOrDefault, not [0]: Skip.If evaluates its message eagerly, so indexing here throws
-        // whenever the list is empty - which is the normal case.
-        var firstUnevaluable = unevaluable.FirstOrDefault()?.Text ?? "";
-        Skip.If(
-            unevaluable.Count > 0,
-            $"`dotnet list package --vulnerable` could not evaluate {unevaluable.Count} project(s); "
-            + $"the audit would be incomplete. First: {firstUnevaluable}");
-
-        var findings = VulnerabilityReport.Parse(json!);
+        //
+        // An incomplete audit still fails on what it did find: a blocking advisory in an evaluable
+        // project must not hide behind a skip caused by a different project. With nothing blocking
+        // it skips, as before, and records no snapshot - partial counts would read as a clean run.
+        if (unevaluable.Count > 0)
+        {
+            var incomplete =
+                $"`dotnet list package --vulnerable` could not evaluate {unevaluable.Count} project(s); "
+                + $"the audit is incomplete. First: {unevaluable[0].Text}";
+            if (blockingRows.Count > 0)
+                throw new DependencyGateException(
+                    $"{Describe(blockingRows, blocking.Count)}{Environment.NewLine}{incomplete}");
+            Skip.If(true, incomplete);
+        }
 
         // A project the SDK could not evaluate is listed under "projects" as well as "problems",
         // so subtract it: "audited" must mean audited, both in the log and in the snapshot count
@@ -95,25 +116,17 @@ internal sealed class DependencyGateRunner
         _logger.Log(
             $"Audited {covered.Count} project(s); {findings.Count} advisory instance(s) found.");
 
-        var rows = DependencyHistoryWriter.Collapse(findings, _options.IgnoredAdvisories);
-        var blocking = VulnerabilityReport
-            .Blocking(findings, _options.FailAtOrAbove, _options.IgnoredAdvisories);
-        var blockingRows = rows
-            .Where(r => r.Severity >= _options.FailAtOrAbove && !r.Ignored)
-            .ToList();
-
-        foreach (var r in rows)
-            _logger.Log(
-                $"  {r.Severity,-8} {r.Package} {r.ResolvedVersion} "
-                + $"[{(r.Direct ? "direct" : "transitive")}] {r.AdvisoryId} "
-                + $"({string.Join(", ", r.Projects)}){(r.Ignored ? " — ignored by configuration" : "")}");
-
         foreach (var orphan in orphans)
             _logger.Log($"  Project outside the solution, not audited: {orphan}");
 
+        // The snapshot's status must match the test result, so it counts the solution-coverage
+        // failure as well as blocking advisories. A deliberate opt-out does not fail.
+        var failsOnOrphans = orphans.Count > 0 && _options.FailOnProjectsOutsideSolution;
+
         var writer = new DependencyHistoryWriter(historyDir, _options.ProjectKey);
         var snapshotFile = writer.WriteSnapshot(
-            rows, _options.FailAtOrAbove, blockingRows.Count, covered.Count, orphans);
+            rows, _options.FailAtOrAbove, blockingRows.Count, covered.Count, orphans,
+            failed: blockingRows.Count > 0 || failsOnOrphans);
         writer.RegenerateSummary();
 
         var uploader = new SasBlobUploader(
@@ -128,7 +141,7 @@ internal sealed class DependencyGateRunner
                 summary,
                 "text/markdown; charset=utf-8");
 
-        if (orphans.Count > 0 && _options.FailOnProjectsOutsideSolution)
+        if (failsOnOrphans)
             throw new DependencyGateException(
                 $"{orphans.Count} project(s) are not in {Path.GetFileName(solution)} and were "
                 + "therefore not audited. An unaudited project is how an advisory goes unnoticed "

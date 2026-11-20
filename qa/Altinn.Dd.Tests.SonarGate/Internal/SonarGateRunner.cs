@@ -53,11 +53,16 @@ internal sealed class SonarGateRunner
         // Daily-cron trigger means "no changes" == HEAD hasn't moved since the last archived run;
         // re-scanning the same commit yields an identical gate, snapshot, and dashboard. A null on
         // either side (first run, legacy snapshot, git/blob unavailable) never skips.
+        // HEAD says nothing about uncommitted edits, so QATESTS_FORCE=1 runs anyway - the scan's
+        // counterpart to QATESTS_COVERAGE=force.
+        var force = string.Equals(
+            Environment.GetEnvironmentVariable("QATESTS_FORCE"), "1", StringComparison.Ordinal);
         var headSha = await GitHead.ResolveAsync(repoRoot);
-        var lastSha = await archiver.GetLastArchivedCommitShaAsync();
+        var lastSha = force ? null : await archiver.GetLastArchivedCommitShaAsync();
         Skip.If(
             headSha is not null && string.Equals(headSha, lastSha, StringComparison.Ordinal),
-            $"No commits since last QA run ({headSha?[..7]}); result would be identical.");
+            $"No commits since last QA run ({headSha?[..7]}); result would be identical. "
+            + "Set QATESTS_FORCE=1 to run anyway.");
 
         var scannerExe = await EnsureSonarScannerAsync(qaTestsDir);
 
@@ -87,7 +92,7 @@ internal sealed class SonarGateRunner
 
         // Optional coverage step runs BEFORE the scanner window so the report exists when we pass
         // its path to `sonarscanner begin`, and so the test project's compilation isn't analyzed.
-        string? coverageFile = null;
+        IReadOnlyList<string> coverageReports = [];
         if (_options.Coverage is not null)
         {
             var forceCoverage = string.Equals(
@@ -95,7 +100,7 @@ internal sealed class SonarGateRunner
                 "force",
                 StringComparison.OrdinalIgnoreCase);
             var collector = new CoverageCollector(_options, repoRoot, qaTestsDir, _logger, _process);
-            coverageFile = await collector.CollectAsync(forceCoverage);
+            coverageReports = await collector.CollectAsync(forceCoverage);
         }
 
         _logger.Log("Beginning Sonar scan…");
@@ -108,8 +113,9 @@ internal sealed class SonarGateRunner
         beginArgs.Append($" /k:\"{_options.ProjectKey}\"")
             .Append($" /d:sonar.host.url={sonarHostUrl}")
             .Append($" /d:sonar.login=admin /d:sonar.password={AdminPassword}");
-        if (coverageFile is not null)
-            beginArgs.Append($" /d:sonar.cs.opencover.reportsPaths=\"{coverageFile}\"");
+        // Comma-separated: a solution target yields one report per test project.
+        if (coverageReports.Count > 0)
+            beginArgs.Append($" /d:sonar.cs.opencover.reportsPaths=\"{string.Join(",", coverageReports)}\"");
         beginArgs.Append($" /d:sonar.exclusions=\"{_options.SonarExclusions}\"")
             .Append(" /d:sonar.scanner.scanAll=false");
 

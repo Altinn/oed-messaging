@@ -29,6 +29,13 @@ public class JsonTests
     }
 
     [Fact]
+    public void GetIntOrNull_TreatsANumberThatDoesNotFitAnIntAsAbsent()
+    {
+        Assert.Null(Json.GetIntOrNull(Parse("""{"n":2147483648}"""), "n"));
+        Assert.Null(Json.GetIntOrNull(Parse("""{"n":7.5}"""), "n"));
+    }
+
+    [Fact]
     public void GetBool_IsTrueOnlyForJsonTrue()
     {
         Assert.True(Json.GetBool(Parse("""{"b":true}"""), "b"));
