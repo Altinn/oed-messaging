@@ -49,6 +49,10 @@ A run is skipped when HEAD is the commit of the last archived run that passed, b
 would be identical. HEAD says nothing about uncommitted edits, so set `QATESTS_FORCE=1` to scan
 anyway. `QATESTS_COVERAGE=force` likewise rebuilds a cached coverage report.
 
+`SonarExclusions` only excludes main code. The scanner treats the files of a test project as test
+code, so keep a test project out of the scan with `SonarTestExclusions` (for example
+`"**/QaTests/**"` when the scan target is a solution that contains the QA tests).
+
 ## Publish target
 
 Per run, the package **archives** the snapshot JSON + regenerated `summary.md` to an Azure Blob

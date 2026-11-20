@@ -109,17 +109,8 @@ internal sealed class SonarGateRunner
         // even after a successful password rotation, while change_password and authentication/validate
         // both accept the same Basic auth header. The scanner accepts sonar.login/sonar.password and
         // uses them for every API call it makes.
-        var beginArgs = new StringBuilder("begin");
-        beginArgs.Append($" /k:\"{_options.ProjectKey}\"")
-            .Append($" /d:sonar.host.url={sonarHostUrl}")
-            .Append($" /d:sonar.login=admin /d:sonar.password={AdminPassword}");
-        // Comma-separated: a solution target yields one report per test project.
-        if (coverageReports.Count > 0)
-            beginArgs.Append($" /d:sonar.cs.opencover.reportsPaths=\"{string.Join(",", coverageReports)}\"");
-        beginArgs.Append($" /d:sonar.exclusions=\"{_options.SonarExclusions}\"")
-            .Append(" /d:sonar.scanner.scanAll=false");
-
-        await _process.RunAsync(scannerExe, beginArgs.ToString(), qaTestsDir);
+        await _process.RunAsync(
+            scannerExe, BeginArgs(_options, sonarHostUrl, coverageReports), qaTestsDir);
 
         _logger.Log($"Building {Path.GetFileName(scanCsproj)} (the scanner intercepts this build)…");
         await _process.RunAsync("dotnet", $"build \"{scanCsproj}\" --no-incremental", qaTestsDir);
@@ -160,6 +151,23 @@ internal sealed class SonarGateRunner
         if (gate.Status != "OK")
             throw new SonarGateException(
                 $"SonarQube quality gate failed. Conditions: {gate.ConditionsSummary}");
+    }
+
+    internal static string BeginArgs(
+        SonarGateOptions options, string sonarHostUrl, IReadOnlyList<string> coverageReports)
+    {
+        var beginArgs = new StringBuilder("begin");
+        beginArgs.Append($" /k:\"{options.ProjectKey}\"")
+            .Append($" /d:sonar.host.url={sonarHostUrl}")
+            .Append($" /d:sonar.login=admin /d:sonar.password={AdminPassword}");
+        // Comma-separated: a solution target yields one report per test project.
+        if (coverageReports.Count > 0)
+            beginArgs.Append($" /d:sonar.cs.opencover.reportsPaths=\"{string.Join(",", coverageReports)}\"");
+        beginArgs.Append($" /d:sonar.exclusions=\"{options.SonarExclusions}\"");
+        if (options.SonarTestExclusions is { } testExclusions)
+            beginArgs.Append($" /d:sonar.test.exclusions=\"{testExclusions}\"");
+        beginArgs.Append(" /d:sonar.scanner.scanAll=false");
+        return beginArgs.ToString();
     }
 
     // Installs dotnet-sonarscanner to <qaTestsDir>/TestResults/tools/sonarscanner/ on first run.

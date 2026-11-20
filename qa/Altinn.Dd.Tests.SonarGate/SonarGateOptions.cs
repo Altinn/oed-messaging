@@ -26,6 +26,13 @@ public sealed record SonarGateOptions
         "**/wwwroot/**,**/node_modules/**," +
         "**/views/Home/Index.cshtml";
 
+    /// <summary>
+    /// Comma-separated Sonar exclusion globs for test code. <see cref="SonarExclusions"/> applies
+    /// only to main code: the scanner classifies a test project's files as test code, which only
+    /// this setting excludes. <c>null</c> (the default) = no test exclusions.
+    /// </summary>
+    public string? SonarTestExclusions { get; init; }
+
     /// <summary>Optional coverage configuration. <c>null</c> = no coverage report collected.</summary>
     public CoverageOptions? Coverage { get; init; }
 

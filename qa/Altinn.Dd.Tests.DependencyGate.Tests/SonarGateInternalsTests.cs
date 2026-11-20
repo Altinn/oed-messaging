@@ -73,6 +73,24 @@ public class SonarGateInternalsTests : IDisposable
         Assert.Contains(Path.GetFullPath(Path.Combine(_repo, "App.Tests")), roots);
     }
 
+    [Fact]
+    public void Scan_PassesTestExclusionsWhenSet()
+    {
+        // sonar.exclusions does not reach test code, so without this a consumer cannot keep a
+        // test project out of the scan.
+        var args = SonarGateRunner.BeginArgs(
+            Options() with { SonarTestExclusions = "**/qa/**" }, "http://localhost:9000", []);
+
+        Assert.Contains(" /d:sonar.test.exclusions=\"**/qa/**\"", args, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Scan_OmitsTestExclusionsByDefault()
+        => Assert.DoesNotContain(
+            "sonar.test.exclusions",
+            SonarGateRunner.BeginArgs(Options(), "http://localhost:9000", []),
+            StringComparison.Ordinal);
+
     private CoverageCollector NewCollector(SonarGateOptions options)
         // The constructor does not log or run anything, so it needs neither collaborator.
         => new(options, _repo, _repo, logger: null!, process: null!);
