@@ -10,6 +10,10 @@
 		<IsPackable>false</IsPackable>
 		<IsTestProject>true</IsTestProject>
 		<RootNamespace>Altinn.Dd.Correspondence.Tests</RootNamespace>
+		<!-- Test code: exempt from the analyser rules and warnings-as-errors set in
+		     Directory.Build.props. -->
+		<EnableNETAnalyzers>false</EnableNETAnalyzers>
+		<TreatWarningsAsErrors>false</TreatWarningsAsErrors>
 	</PropertyGroup>
 
 	<ItemGroup>

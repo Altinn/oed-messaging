@@ -9,6 +9,10 @@
     <IsTestProject>true</IsTestProject>
     <!-- Not published, so member-level docs are not required. -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- Test code: exempt from the analyser rules and warnings-as-errors set in
+         Directory.Build.props. -->
+    <EnableNETAnalyzers>false</EnableNETAnalyzers>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>

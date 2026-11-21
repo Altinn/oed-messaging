@@ -1,4 +1,5 @@
 using Altinn.Dd.Tests.Shared;
+using System.Globalization;
 using System.Text;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Configurations;
@@ -279,19 +280,19 @@ internal sealed class SonarGateRunner
         string? commitSha = null)
     {
         var beginArgs = new StringBuilder("begin");
-        beginArgs.Append($" /k:\"{options.ProjectKey}\"")
-            .Append($" /d:sonar.host.url={sonarHostUrl}")
-            .Append($" /d:sonar.login=admin /d:sonar.password={AdminPassword}");
+        beginArgs.Append(CultureInfo.InvariantCulture, $" /k:\"{options.ProjectKey}\"")
+            .Append(CultureInfo.InvariantCulture, $" /d:sonar.host.url={sonarHostUrl}")
+            .Append(CultureInfo.InvariantCulture, $" /d:sonar.login=admin /d:sonar.password={AdminPassword}");
         // Comma-separated: a solution target yields one report per test project.
         if (coverageReports.Count > 0)
-            beginArgs.Append($" /d:sonar.cs.opencover.reportsPaths=\"{string.Join(",", coverageReports)}\"");
+            beginArgs.Append(CultureInfo.InvariantCulture, $" /d:sonar.cs.opencover.reportsPaths=\"{string.Join(",", coverageReports)}\"");
         // The commit is the project version, so a restored database's new-code period ("previous
         // version") starts at the previous run's commit rather than at the first analysis ever.
         if (commitSha is not null)
-            beginArgs.Append($" /v:\"{commitSha}\"");
-        beginArgs.Append($" /d:sonar.exclusions=\"{options.SonarExclusions}\"");
+            beginArgs.Append(CultureInfo.InvariantCulture, $" /v:\"{commitSha}\"");
+        beginArgs.Append(CultureInfo.InvariantCulture, $" /d:sonar.exclusions=\"{options.SonarExclusions}\"");
         if (options.SonarTestExclusions is { } testExclusions)
-            beginArgs.Append($" /d:sonar.test.exclusions=\"{testExclusions}\"");
+            beginArgs.Append(CultureInfo.InvariantCulture, $" /d:sonar.test.exclusions=\"{testExclusions}\"");
         beginArgs.Append(" /d:sonar.scanner.scanAll=false");
         return beginArgs.ToString();
     }

@@ -52,7 +52,7 @@ internal sealed class ProcessRunner
         TimeSpan? timeout = null)
     {
         var (code, stdout, stderr) =
-            await RunRawAsync(fileName, args, workingDir, _logger.StreamSubprocessLine, timeout);
+            await RunRawAsync(fileName, args, workingDir, Logger.StreamSubprocessLine, timeout);
         if (code != 0)
             throw _onFailure(
                 $"`{fileName} {args}` exited with code {code}.{Environment.NewLine}"

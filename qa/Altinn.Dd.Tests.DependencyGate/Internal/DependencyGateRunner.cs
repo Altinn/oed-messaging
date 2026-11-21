@@ -190,7 +190,7 @@ internal sealed class DependencyGateRunner
     /// bin/ or obj/ is excluded — SDKs generate .csproj files there (the Azure Functions
     /// WorkerExtensions project, for one), and those are build artefacts rather than source.
     /// </summary>
-    private static IReadOnlyList<string> ProjectsOutsideSolution(
+    private static List<string> ProjectsOutsideSolution(
         string repoRoot,
         IReadOnlyList<string> coveredProjectPaths)
     {
@@ -219,7 +219,7 @@ internal sealed class DependencyGateRunner
         }
     }
 
-    private string Describe(IReadOnlyList<DependencyHistoryWriter.Row> rows, int instanceCount)
+    private string Describe(List<DependencyHistoryWriter.Row> rows, int instanceCount)
     {
         var sb = new StringBuilder();
         sb.Append(CultureInfo.InvariantCulture,

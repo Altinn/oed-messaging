@@ -194,7 +194,7 @@ internal sealed class CoverageCollector
             .OrderBy(t => t.Relative, StringComparer.Ordinal)
             .ToList();
 
-        using var sha = SHA1.Create();
+        using var sha = SHA256.Create();
         var sep = new byte[] { 0 };
         foreach (var (absolute, relative) in inputs)
         {

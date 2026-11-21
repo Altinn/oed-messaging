@@ -29,5 +29,5 @@ internal sealed class Logger
         LiveOut.WriteLine(line);
     }
 
-    public void StreamSubprocessLine(string line) => LiveOut.WriteLine($"    {line}");
+    public static void StreamSubprocessLine(string line) => LiveOut.WriteLine($"    {line}");
 }
